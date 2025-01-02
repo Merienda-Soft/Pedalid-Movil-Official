@@ -9,7 +9,7 @@ import Animated, {
 
 import { ThemedView } from '@/components/ThemedView';
 
-const HEADER_HEIGHT = 250;
+const HEADER_HEIGHT = 150;
 
 export default function ParallaxScrollView({
   children,

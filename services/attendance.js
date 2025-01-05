@@ -3,7 +3,6 @@ import { API_BASE_URL } from './apiConfig';  // Asegúrate de tener un archivo d
 // Obtener estudiantes por curso y materia
 export const getStudentsByCourseAndSubject = async (courseid, materiaid) => {
   try {
-    console.log(`${API_BASE_URL}/registration/inscripciones?courseid=${courseid}&materiaid=${materiaid}`)
     const response = await fetch(`${API_BASE_URL}/registration/inscripciones?courseid=${courseid}&materiaid=${materiaid}`);
     
     if (!response.ok) {

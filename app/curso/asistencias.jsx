@@ -8,7 +8,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';  // DatePic
 import { getStudentsByCourseAndSubject, saveAttendance, getAttendanceByCourseAndDate } from '@/services/attendance';  // Importar el servicio de API
 import { useGlobalState } from '@/services/UserContext';
 
+import { useColorScheme } from 'react-native';
+
+
 export default function AttendanceScreen() {
+  const colorScheme = useColorScheme();
   const { globalState } = useGlobalState();
   const {cursoid, materiaid, cursoName} = globalState
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -23,7 +27,6 @@ export default function AttendanceScreen() {
         const courseid = cursoid;  // Obtener los IDs dinámicamente según el curso y materia
         const materiaaid = materiaid;
         const response = await getStudentsByCourseAndSubject(courseid, materiaaid);
-        console.log(response)
         setStudents(response);
         // Inicializar las asistencias con "A" (asistió) por defecto
         const initialAttendance = {};
@@ -128,14 +131,38 @@ const handleSaveAttendance = async (courseid, materiaid, date, attendances) => {
       {/* Lista de estudiantes con asistencia */}
       {students.map((student) => (
         <View key={student._id} style={styles.studentContainer}>
-          <Text style={styles.studentName}>{student.name}</Text>
+          <Text style={[
+            styles.studentName, 
+            {color: colorScheme === 'dark' ? '#FFFFFF' : '#000000'}
+          ]}>
+            {student.name}
+          </Text>
           <Picker
             selectedValue={attendances[student._id]}
-            style={styles.picker}
+            style={[
+              styles.picker,
+              {
+                color: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+                backgroundColor: colorScheme === 'dark' ? '#333333' : '#FFFFFF'
+              }
+            ]}
+            dropdownIconColor={colorScheme === 'dark' ? '#FFFFFF' : '#000000'}
             onValueChange={(itemValue) => handleAttendanceChange(student._id, itemValue)}>
-            <Picker.Item label="Asistió" value="A" />
-            <Picker.Item label="Falta" value="F" />
-            <Picker.Item label="Licencia" value="L" />
+            <Picker.Item 
+              label="Asistió" 
+              value="A" 
+              style={{color: '#000000'}}
+            />
+            <Picker.Item 
+              label="Falta" 
+              value="F" 
+              style={{color: '#000000'}}
+            />
+            <Picker.Item 
+              label="Licencia" 
+              value="L" 
+              style={{color: '#000000'}}
+            />
           </Picker>
         </View>
       ))}

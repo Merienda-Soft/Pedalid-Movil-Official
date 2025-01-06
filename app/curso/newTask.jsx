@@ -21,9 +21,10 @@ export default function newTaskScreen() {
     const [selectedValue, setSelectedValue] = useState('1');
 
     const options = [
-        { value: '1', text: 'Tarea Normal' },
-        { value: '2', text: 'Evaluacion' },
-        { value: '3', text: 'Autoevaluacion' },
+        { value: '1', text: 'Ser' },
+        { value: '2', text: 'Saber' },
+        { value: '3', text: 'Hacer' },
+        { value: '4', text: 'Decidir' },
       ];
 
     const handleCreateTask = async () => {
@@ -100,8 +101,9 @@ export default function newTaskScreen() {
         type="number"
         placeholder="Ingrese la ponderaciond de la tarea"
         />
+        
       <InputComboBox
-        label="Tipo de actividad"
+        label="Área de evaluación"
         selectedValue={selectedValue}
         onValueChange={setSelectedValue}
         options={options}

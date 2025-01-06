@@ -16,7 +16,6 @@ export default function TasksScreenCalification() {
   const [estudiantes, setStudents] = useState(students);
   const [changeCount, setChangeCount] = useState(0);
 
-  console.log(allTask)
 
   const { globalState } = useGlobalState();
   const {materiaName} = globalState
@@ -81,7 +80,7 @@ export default function TasksScreenCalification() {
   };
   
 
-  const options = { '1': 'Tarea Normal', '2': 'Evaluacion', '3': 'Autoevaluacion' };
+  const options = { '1': 'Ser', '2': 'Saber', '3': 'Hacer', '4': 'Decidir' };
 
   return (
     <ParallaxScrollView

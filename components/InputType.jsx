@@ -90,7 +90,7 @@ export function InputType({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   inputContainer: {
     flexDirection: 'row',

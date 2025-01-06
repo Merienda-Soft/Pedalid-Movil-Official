@@ -36,7 +36,7 @@ export function InputComboBox({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   pickerContainer: {
     borderColor: '#ccc',

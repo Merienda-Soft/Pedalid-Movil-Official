@@ -55,7 +55,7 @@ export default function reportsScreen() {
 
   
   const handleTareaPress = (tarea) => {
-    const options = { '1': 'Tarea Normal', '2': 'Evaluacion', '3': 'Autoevaluacion' };
+    const options = { '1': 'Ser', '2': 'Saber', '3': 'Hacer', '4': 'Decidir' };
     Alert.alert(
       `Detalles de ${tarea.name}`,
       `Descripción: ${tarea.description}\nPonderación: ${tarea.ponderacion}\nTipo: ${options[tarea.tipo]}`,

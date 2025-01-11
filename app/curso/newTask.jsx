@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Image, StyleSheet, Alert } from 'react-native';
+import { Image, StyleSheet, ActivityIndicator } from 'react-native';
+import { handleError } from '@/utils/errorHandler';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -9,128 +10,135 @@ import { ButtonLink } from '@/components/ButtonLink';
 import { createActivity } from '@/services/activity';
 import { useGlobalState } from '@/services/UserContext';
 import { useNavigation } from '@react-navigation/native';
-export default function newTaskScreen() {
+
+export default function NewTaskScreen() {
   const { globalState } = useGlobalState();
-  const {cursoid, materiaid, teacherid, materiaName, cursoName} = globalState
+  const { cursoid, materiaid, teacherid, materiaName, cursoName } = globalState;
   const navigation = useNavigation();
+  const [isLoading, setIsLoading] = useState(false);
 
-    const [selectedDate, setSelectedDate] = useState('');
-    const [name, setName] = useState('');
-    const [ponderacion, setPonderacion] = useState('');
-    const [descripcion, setDescripcion] = useState('');
-    const [selectedValue, setSelectedValue] = useState('1');
+  const [formData, setFormData] = useState({
+    selectedDate: '',
+    name: '',
+    ponderacion: '',
+    descripcion: '',
+    selectedValue: '1'
+  });
 
-    const options = [
-        { value: '1', text: 'Ser' },
-        { value: '2', text: 'Saber' },
-        { value: '3', text: 'Hacer' },
-        { value: '4', text: 'Decidir' },
-      ];
+  const options = [
+    { value: '1', text: 'Ser' },
+    { value: '2', text: 'Saber' },
+    { value: '3', text: 'Hacer' },
+    { value: '4', text: 'Decidir' },
+  ];
 
-    const handleCreateTask = async () => {
-      if (!name || !selectedDate || !ponderacion || !descripcion) {
-        Alert.alert("Error", "Por favor, completa todos los campos.");
-        return;
-      }
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      handleError(new Error('El nombre de la tarea es requerido'));
+      return false;
+    }
+    if (!formData.ponderacion || isNaN(formData.ponderacion)) {
+      handleError(new Error('La ponderación debe ser un número válido'));
+      return false;
+    }
+    if (!formData.selectedDate) {
+      handleError(new Error('La fecha es requerida'));
+      return false;
+    }
+    if (!formData.descripcion.trim()) {
+      handleError(new Error('La descripción es requerida'));
+      return false;
+    }
+    return true;
+  };
 
-  
-      const newTask = {
-        name: name,
-        description: descripcion,
-        fecha: selectedDate,
-        horario: "00:00", 
-        ponderacion: `${ponderacion}%`,
-        cursoid: cursoid,  
-        materiaid: materiaid,
-        professorid: teacherid, 
-        tipo: Number(selectedValue),
-        fecha_fin: "2024-03-20", 
+  const handleChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleCreateTask = async () => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      const taskData = {
+        name: formData.name.trim(),
+        description: formData.descripcion.trim(),
+        fecha: formData.selectedDate,
+        ponderacion: Number(formData.ponderacion),
+        type: Number(formData.selectedValue),
+        materiaid,
+        cursoid,
+        teacherid
       };
-  
-      try {
-        // Enviar los datos al servidor
-        const response = await createActivity(newTask);
-        Alert.alert("Tarea creada con éxito", 'La tarea se creo con exito');
-        navigation.replace("curso", {screen: 'index', params: {
-          materiaName: materiaName,
-          cursoName: cursoName,
-          materiaid: materiaid,
-          cursoid: cursoid,
-          teacherid: teacherid,
-      }})
-      } catch (error) {
-        Alert.alert("Error", `Hubo un problema creando la tarea: ${error.message}`);
-      }
-    };
+
+      await createActivity(taskData);
+      navigation.goBack();
+    } catch (error) {
+      handleError(error, 'Error al crear la tarea');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </ThemedView>
+    );
+  }
 
   return (
-    <ParallaxScrollView
-      modo={2}
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/newtask.jpg')}
-          style={styles.reactLogo}
+    <ParallaxScrollView>
+      <ThemedView style={styles.container}>
+        <InputType
+          label="Nombre de la tarea"
+          value={formData.name}
+          onChangeText={(value) => handleChange('name', value)}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Nueva Tarea</ThemedText>
-        <ThemedText type="default">({materiaName})</ThemedText>
+        <InputType
+          label="Ponderación"
+          value={formData.ponderacion}
+          onChangeText={(value) => handleChange('ponderacion', value)}
+          keyboardType="numeric"
+        />
+        <InputType
+          label="Fecha"
+          value={formData.selectedDate}
+          onChangeText={(value) => handleChange('selectedDate', value)}
+        />
+        <InputComboBox
+          options={options}
+          selectedValue={formData.selectedValue}
+          onValueChange={(value) => handleChange('selectedValue', value)}
+        />
+        <InputType
+          label="Descripción"
+          value={formData.descripcion}
+          onChangeText={(value) => handleChange('descripcion', value)}
+          multiline
+        />
+        <ButtonLink 
+          title="Crear Tarea"
+          onPress={handleCreateTask}
+          disabled={isLoading}
+        />
       </ThemedView>
-
-      <InputType
-        label="Nombre"
-        value={name}
-        onChangeText={setName}
-        type="text"
-        placeholder="Ej: Tarea 1"
-        />
-
-      <InputType
-        label="Fecha"
-        value={selectedDate}
-        onChangeText={setSelectedDate}
-        type="date"
-        placeholder="Seleccionar fecha"
-        />
-
-      <InputType
-        label="Ponderacion"
-        value={ponderacion}
-        onChangeText={setPonderacion}
-        type="number"
-        placeholder="Ingrese la ponderaciond de la tarea"
-        />
-        
-      <InputComboBox
-        label="Área de evaluación"
-        selectedValue={selectedValue}
-        onValueChange={setSelectedValue}
-        options={options}
-        />
-
-      <InputType
-        label="Descripcion"
-        value={descripcion}
-        onChangeText={setDescripcion}
-        type="textarea"
-        placeholder="Seleccionar fecha"
-        />
-
-      <ButtonLink text="Crear tarea" modo='large' onPress={handleCreateTask} color='primary'/>
-
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-  },
-  reactLogo: {
-    height: '100%',
-    width: '100%',
-  },
+  }
 });

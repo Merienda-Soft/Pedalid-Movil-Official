@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Alert, Image, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Alert, Image, StyleSheet, View, ActivityIndicator } from 'react-native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -11,6 +11,7 @@ import { useGlobalState } from '@/services/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { deleteActivity, getActivities } from '@/services/activity';
+import { handleError } from '@/utils/errorHandler';
 
 export default function TasksScreen() {
 
@@ -21,42 +22,54 @@ export default function TasksScreen() {
   const [searchValue, setSearchValue] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [tasks, setTasks] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { materiaid, cursoid, teacherid, materiaName } = route.params;
   const { clearGlobalState } = useGlobalState();
 
-  const fetchTasks = async () => {
+  const validateParams = () => {
     if (!materiaid || !cursoid || !teacherid) {
-      Alert.alert('Error', 'Faltan parámetros para realizar la acción.');
-      return;
+      handleError(new Error('Faltan parámetros para realizar la acción'));
+      return false;
     }
+    return true;
+  };
+
+  const fetchTasks = async () => {
+    if (!validateParams()) return;
+
+    setIsLoading(true);
     try {
       const taskData = await getActivities(materiaid, cursoid, teacherid);
-      
       setTasks(taskData);
     } catch (error) {
-      Alert.alert('Aviso', 'No tienes creada ninguna tarea para esta materia');
+      handleError(error, 'No tienes creada ninguna tarea para esta materia');
+      setTasks([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       fetchTasks();
-    }, [])
+
+      const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+        if (e.data.action.type === 'GO_BACK') {
+          clearGlobalState();
+        }
+      });
+
+      return () => {
+        unsubscribe();
+        setTasks([]); // Clean up state on unmount
+      };
+    }, [materiaid, cursoid, teacherid])
   );
-  
+
   useEffect(() => {
     fetchTasks();
   }, [materiaid, cursoid, teacherid]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (e.data.action.type === 'GO_BACK') {
-        clearGlobalState();
-      }
-    });
-    return unsubscribe;
-  }, [navigation]);
 
   // Filtrar las tareas por nombre o por fecha
   const filteredTasks = tasks.filter(task => {
@@ -117,6 +130,14 @@ export default function TasksScreen() {
       }
     );
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <ParallaxScrollView
@@ -180,6 +201,15 @@ const styles = StyleSheet.create({
   reactLogo: {
     height: '100%',
     width: '100%',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

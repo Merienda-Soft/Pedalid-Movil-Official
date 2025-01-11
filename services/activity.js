@@ -1,9 +1,13 @@
 import { API_BASE_URL } from "./apiConfig";
 
 export const getActivities = async (materiaId, cursoId, techerId) => {
-    const response = await fetch(`${API_BASE_URL}/activities/filter?materiaid=${materiaId}&cursoid=${cursoId}&teacherid=${techerId}`)
+    const response = await fetch(`${API_BASE_URL}/activities/filter?materiaid=${materiaId}&cursoid=${cursoId}&teacherid=${techerId}`);
 
-    if(!response.ok){
+    if (response.status === 404) {
+        throw new Error('NO_TASKS');
+    }
+
+    if (!response.ok) {
         throw new Error(`Error fetching activities: ${response.status}`);
     }
 

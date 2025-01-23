@@ -20,7 +20,7 @@ export default function newTaskScreen() {
     const [name, setName] = useState('');
     const [ponderacion, setPonderacion] = useState('');
     const [descripcion, setDescripcion] = useState('');
-    const [selectedValue, setSelectedValue] = useState('1');
+    const [selectedValue, setSelectedValue] = useState('1'); // Default value
 
 
     const { allTask } = route.params;
@@ -30,7 +30,8 @@ export default function newTaskScreen() {
             setName(allTask.name);
             setPonderacion(allTask.ponderacion);
             setDescripcion(allTask.description);
-            setSelectedValue(allTask.tipo);
+            // Convert number to string for ComboBox
+            setSelectedValue(allTask.tipo.toString());
 
             const formattedDate = new Date(allTask.fecha).toISOString().split('T')[0];
             setSelectedDate(formattedDate); 
@@ -60,7 +61,7 @@ export default function newTaskScreen() {
         description: descripcion,
         fecha: selectedDate,
         horario: "00:00", 
-        ponderacion: `${ponderacion}%`,
+        ponderacion: `${ponderacion}`,
         cursoid: cursoid,  
         materiaid: materiaid,
         professorid: teacherid, 

@@ -22,6 +22,13 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  useEffect(() => {
+    if (!authuser) {
+      navigation.replace('auth'); // Replace with your auth route
+      return;
+    }
+  }, [authuser, navigation]);
+
   useFocusEffect(
     React.useCallback(() => {
       fetchUserData();
@@ -68,7 +75,7 @@ export default function HomeScreen() {
       </View>
     );
   }
-
+  
   return (
     <ScrollView
       style={styles.container}
@@ -128,7 +135,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   loadingContainer: {
     flex: 1,

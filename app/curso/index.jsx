@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Alert, Image, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { Alert, Image, StyleSheet, View, ActivityIndicator, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -23,6 +24,8 @@ export default function TasksScreen() {
   const [selectedDate, setSelectedDate] = useState('');
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [refreshing, setRefreshing] = useState(false);
 
   const { materiaid, cursoid, teacherid, materiaName } = route.params;
   const { clearGlobalState } = useGlobalState();
@@ -43,7 +46,7 @@ export default function TasksScreen() {
       const taskData = await getActivities(materiaid, cursoid, teacherid);
       setTasks(taskData);
     } catch (error) {
-      handleError(error, 'No tienes creada ninguna tarea para esta materia');
+      handleError(error, 'No hay tareas registradas para esta materia');
       setTasks([]);
     } finally {
       setIsLoading(false);
@@ -71,11 +74,34 @@ export default function TasksScreen() {
     fetchTasks();
   }, [materiaid, cursoid, teacherid]);
 
-  // Filtrar las tareas por nombre o por fecha
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
+
+  // Modificar el filtrado de tareas para que sea por mes
   const filteredTasks = tasks.filter(task => {
+    const taskDate = new Date(task.fecha);
     const matchesSearch = task.name.toLowerCase().includes(searchValue.toLowerCase());
-    const matchesDate = selectedDate ? new Date(task.fecha).toISOString().split('T')[0] === selectedDate : true;
-    return matchesSearch && matchesDate;
+    const matchesMonth = taskDate.getMonth() === currentDate.getMonth() && 
+                        taskDate.getFullYear() === currentDate.getFullYear();
+    return matchesSearch && matchesMonth;
   });
 
   const deleteTask = async (taskid) => {
@@ -131,6 +157,15 @@ export default function TasksScreen() {
     );
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchTasks();
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -148,6 +183,12 @@ export default function TasksScreen() {
           source={require('@/assets/images/task.jpg')}
           style={styles.reactLogo}
         />
+      }
+      refreshControl={
+        <RefreshControl 
+          refreshing={refreshing} 
+          onRefresh={onRefresh}
+        />
       }>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Tareas</ThemedText>
@@ -162,13 +203,20 @@ export default function TasksScreen() {
         placeholder="Buscar..."
       />
 
-      <InputFilter
-        value={selectedDate}
-        onChangeText={setSelectedDate}
-        onPress={() => {}}
-        type="date"
-        placeholder="Seleccionar fecha"
-      />
+      {/* Nuevo componente de navegación por mes */}
+      <View style={styles.monthNavigator}>
+        <TouchableOpacity onPress={handlePrevMonth}>
+          <Ionicons name="chevron-back" size={24} color="#666" />
+        </TouchableOpacity>
+        
+        <ThemedText type="subtitle">
+          {`${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
+        </ThemedText>
+        
+        <TouchableOpacity onPress={handleNextMonth}>
+          <Ionicons name="chevron-forward" size={24} color="#666" />
+        </TouchableOpacity>
+      </View>
 
     {filteredTasks.map((task) => {
       const date = new Date(task.fecha);
@@ -177,7 +225,7 @@ export default function TasksScreen() {
       return (
         <ButtonLink
           key={task._id}
-          text={`${formattedDate}     ${task.name}     ponderacion ${task.ponderacion}`}
+          text={`${formattedDate}     ${task.name}     ponderacion ${task.ponderacion}%`}
           modo="large"
           onPress={() => openActionSheet(task)} 
           color="secondary"
@@ -211,5 +259,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  monthNavigator: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 5,
+  },
 });
-

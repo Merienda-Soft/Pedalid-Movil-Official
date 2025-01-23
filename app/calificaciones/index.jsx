@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Image, StyleSheet, Alert } from 'react-native';
+import { Image, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -79,6 +80,29 @@ export default function TasksScreenCalification() {
     }
   };
   
+  const handleSave = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/activities/${allTask._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...allTask,
+          estudiantes: estudiantes,
+        }),
+      });
+      
+      if (response.ok) {
+        Alert.alert('Éxito', 'Calificaciones actualizadas.');
+        setChangeCount(0); // Reset changes counter
+      } else {
+        Alert.alert('Error', 'Error al guardar las calificaciones');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron guardar las calificaciones.');
+    }
+  };
 
   const options = { '1': 'Ser', '2': 'Saber', '3': 'Hacer', '4': 'Decidir' };
 
@@ -94,6 +118,12 @@ export default function TasksScreenCalification() {
       }>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Calificaciones</ThemedText>
+        <TouchableOpacity 
+          onPress={handleSave}
+          style={styles.saveButton}
+        >
+          <Ionicons name="save-outline" size={24} color="#007AFF" />
+        </TouchableOpacity>
       </ThemedView>
       <ThemedText type="default">({materiaName})</ThemedText>
 
@@ -122,7 +152,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
   },
   reactLogo: {
     height: '100%',
@@ -132,5 +162,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#17A2B8',
     padding: 16,
     borderRadius: 10,
+  },
+  saveButton: {
+    padding: 8,
   },
 });

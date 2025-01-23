@@ -16,7 +16,7 @@ export default function ProfileScreen() {
           source={{uri: authuser.picture}}
           style={styles.reactLogo}
         />
-      }>
+      }> 
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">
           { authuser.name }

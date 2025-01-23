@@ -14,6 +14,36 @@ export default function reportsScreen() {
   const route = useRoute();
   const { materiaid, cursoid, teacherid, materiaName, cursoName } = route.params;
   const [actividades, setActividades] = useState([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedType, setSelectedType] = useState(null);
+
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ]; 
+
+  const activityTypes = [
+    { id: 1, name: 'Ser' },
+    { id: 2, name: 'Saber' },
+    { id: 3, name: 'Hacer' },
+    { id: 4, name: 'Decidir' }
+  ];
+
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
 
   const fetchTasks = async () => {
     if (!materiaid || !cursoid || !teacherid) {
@@ -53,7 +83,25 @@ export default function reportsScreen() {
   const estudiantes = Object.keys(estudiantesUnicos);
   const tareas = actividades.map(tarea => tarea);
 
-  
+  // Filter activities by current month and selected type
+  const filteredActivities = actividades.filter(tarea => {
+    const taskDate = new Date(tarea.fecha);
+    const matchesMonth = taskDate.getMonth() === currentDate.getMonth() && 
+                        taskDate.getFullYear() === currentDate.getFullYear();
+    const matchesType = selectedType ? tarea.tipo === selectedType : true;
+    return matchesMonth && matchesType;
+  });
+
+  // Calculate monthly averages
+  const calculateAverage = (studentName) => {
+    const grades = filteredActivities.map(tarea => 
+      estudiantesUnicos[studentName][tarea._id] || 0
+    );
+    const validGrades = grades.filter(grade => grade > -1);
+    if (validGrades.length === 0) return 0;
+    return (validGrades.reduce((a, b) => a + b, 0) / validGrades.length).toFixed(2);
+  };
+
   const handleTareaPress = (tarea) => {
     const options = { '1': 'Ser', '2': 'Saber', '3': 'Hacer', '4': 'Decidir' };
     Alert.alert(
@@ -89,25 +137,71 @@ export default function reportsScreen() {
         <ThemedText type="title">Registro</ThemedText>
       </ThemedView>
 
+      {/* Month Navigator */}
+      <View style={styles.monthNavigator}>
+        <TouchableOpacity onPress={handlePrevMonth}>
+          <ThemedText style={styles.arrow}>{'<'}</ThemedText>
+        </TouchableOpacity>
+        <ThemedText type="subtitle">
+          {`${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
+        </ThemedText>
+        <TouchableOpacity onPress={handleNextMonth}>
+          <ThemedText style={styles.arrow}>{'>'}</ThemedText>
+        </TouchableOpacity>
+      </View>
+
+      {/* Type Filter */}
+      <View style={styles.typeFilter}>
+        <TouchableOpacity 
+          onPress={() => setSelectedType(null)}
+          style={[
+            styles.typeButton, 
+            !selectedType && styles.selectedType
+          ]}
+        >
+          <ThemedText style={!selectedType && styles.selectedTypeText}>
+            Todos
+          </ThemedText>
+        </TouchableOpacity>
+        {activityTypes.map(type => (
+          <TouchableOpacity 
+            key={type.id}
+            onPress={() => setSelectedType(type.id)}
+            style={[
+              styles.typeButton,
+              selectedType === type.id && styles.selectedType
+            ]}
+          >
+            <ThemedText style={selectedType === type.id && styles.selectedTypeText}>
+              {type.name}
+            </ThemedText>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <ScrollView horizontal>
         <View style={styles.table}>
           <View style={styles.row}>
             <Text style={[styles.title, { color }]}>Estudiantes</Text>
-            {tareas.map((tarea, index) => (
+            {filteredActivities.map((tarea, index) => (
               <TouchableOpacity key={index} onPress={() => handleTareaPress(tarea)}>
                 <Text style={[styles.headerButton, { color }]}>{tarea.name}</Text>
               </TouchableOpacity>
             ))}
+            <Text style={[styles.headerButton, { color }]}>Promedio</Text>
           </View>
 
           {estudiantes.map((nombre, rowIndex) => (
             <View key={rowIndex} style={styles.row}>
               <Text style={[styles.name, { color }]}>{nombre}</Text>
-              {tareas.map((tarea, colIndex) => (
+              {filteredActivities.map((tarea, colIndex) => (
                 <Text key={colIndex} style={[styles.cell, { color }]}>
                   {estudiantesUnicos[nombre][tarea._id] ?? ''}
                 </Text>
               ))}
+              <Text style={[styles.cell, { color, fontWeight: 'bold' }]}>
+                {calculateAverage(nombre)}
+              </Text>
             </View>
           ))}
         </View>
@@ -124,15 +218,12 @@ const styles = StyleSheet.create({
   headerImage: {
     width: '100%',
     height: '100%',
-  },
+  }, 
   titleContainer: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
-  },
-  table: {
-    padding: 16,
   },
   row: {
     flexDirection: 'row',
@@ -144,7 +235,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     width: 100,
     textAlign: 'center',
-    textDecorationLine: 'underline',
   },
   cell: {
     fontSize: 16,
@@ -156,4 +246,34 @@ const styles = StyleSheet.create({
     width: 100,
     textAlign: 'start',
   },
+  monthNavigator: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    paddingVertical: 5,
+  },
+  arrow: {
+    fontSize: 24,
+    paddingHorizontal: 20,
+  },
+  typeFilter: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 5,
+  },
+  typeButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  selectedType: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  selectedTypeText: {
+    color: '#FFFFFF',
+  }
 });

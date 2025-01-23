@@ -5,7 +5,8 @@ const ERROR_TYPES = {
   NETWORK: 'NETWORK',
   VALIDATION: 'VALIDATION',
   SERVER: 'SERVER',
-  UNKNOWN: 'UNKNOWN'
+  UNKNOWN: 'UNKNOWN',
+  NO_TASKS: 'NO_TASKS'  // Add new error type
 };
 
 const ERROR_MESSAGES = {
@@ -13,7 +14,8 @@ const ERROR_MESSAGES = {
   [ERROR_TYPES.NETWORK]: 'Error de conexión. Verifique su conexión a internet.',
   [ERROR_TYPES.VALIDATION]: 'Por favor verifique los datos ingresados.',
   [ERROR_TYPES.SERVER]: 'Error en el servidor. Intente más tarde.',
-  [ERROR_TYPES.UNKNOWN]: 'Ha ocurrido un error inesperado.'
+  [ERROR_TYPES.UNKNOWN]: 'Ha ocurrido un error inesperado.',
+  [ERROR_TYPES.NO_TASKS]: 'No hay tareas registradas para esta materia.' // Add message
 };
 
 export class AppError extends Error {
@@ -25,13 +27,14 @@ export class AppError extends Error {
   }
 }
 
-export const handleError = (error, showAlert = true) => {
-  console.error('Error details:', error);
-
+export const handleError = (error, customMessage = null) => {
+  
   let customError;
 
   if (error instanceof AppError) {
     customError = error;
+  } else if (error.message === 'NO_TASKS') {
+    customError = new AppError(ERROR_TYPES.NO_TASKS, customMessage, error);
   } else if (error.message?.includes('Network')) {
     customError = new AppError(ERROR_TYPES.NETWORK, null, error);
   } else if (error.response?.status === 401) {
@@ -42,10 +45,7 @@ export const handleError = (error, showAlert = true) => {
     customError = new AppError(ERROR_TYPES.UNKNOWN, null, error);
   }
 
-  if (showAlert) {
-    Alert.alert('Error', customError.message);
-  }
-
+  Alert.alert('Aviso', customMessage || customError.message);
   return customError;
 };
 

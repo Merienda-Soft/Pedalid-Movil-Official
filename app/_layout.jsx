@@ -30,24 +30,27 @@ export default function RootLayout() {
     return null;
   }
 
+  // Add initial route name
+  const initialRouteName = 'auth';
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <ActionSheetProvider>
-      <AuthProvider>
-      <UserProvider>
-        <GlobalStateProvider>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }}/>
-            <Stack.Screen name="index" options={{ headerShown: false }}/>
-            <Stack.Screen name="curso" options={{ headerShown: false }}/>
-            <Stack.Screen name="calificaciones" options={{ headerShown: false }}/>
-            <Stack.Screen name="reportes" options={{ headerShown: false }}/>
-            <Stack.Screen name="+not-found" />
-          </Stack>
-        </GlobalStateProvider>
-      </UserProvider>
-      </AuthProvider>
+        <AuthProvider>
+          <UserProvider>
+            <GlobalStateProvider>
+              <Stack initialRouteName={initialRouteName}>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="auth" options={{ headerShown: false }}/>
+                <Stack.Screen name="index" options={{ headerShown: false }}/>
+                <Stack.Screen name="curso" options={{ headerShown: false }}/>
+                <Stack.Screen name="calificaciones" options={{ headerShown: false }}/>
+                <Stack.Screen name="reportes" options={{ headerShown: false }}/>
+                <Stack.Screen name="+not-found" />
+              </Stack>
+            </GlobalStateProvider>
+          </UserProvider>
+        </AuthProvider>
       </ActionSheetProvider>
     </ThemeProvider>
   );

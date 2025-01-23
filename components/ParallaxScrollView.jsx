@@ -15,7 +15,8 @@ export default function ParallaxScrollView({
   children,
   headerImage,
   headerBackgroundColor,
-  modo
+  modo,
+  refreshControl // Add this prop
 }) {
   const colorScheme = useColorScheme() ?? 'light';
   const scrollRef = useAnimatedRef();
@@ -43,7 +44,11 @@ export default function ParallaxScrollView({
 
   return (
     <ThemedView style={styles.container}>
-      <Animated.ScrollView ref={scrollRef} scrollEventThrottle={16}>
+      <Animated.ScrollView 
+        ref={scrollRef} 
+        scrollEventThrottle={16}
+        refreshControl={refreshControl} // Add refreshControl
+      >
         <Animated.View
           style={[
             { height: headerHeight },
@@ -61,7 +66,7 @@ export default function ParallaxScrollView({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1
+    flex: 1,
   },
   header: {
     flex: 1,

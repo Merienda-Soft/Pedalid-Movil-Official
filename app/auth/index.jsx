@@ -44,7 +44,7 @@ export default function AuthLogin() {
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <Image
-          source={require('@/assets/images/logo.webp')}
+          source={require('@/assets/images/logo.png')}
           style={styles.reactLogo}
         />
       }>

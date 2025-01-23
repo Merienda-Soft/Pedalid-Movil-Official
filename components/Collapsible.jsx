@@ -12,7 +12,7 @@ import { useBtnColor } from '@/hooks/useBtnColor';
 export function Collapsible({ children, title, color }) {
   const btnColor = useBtnColor(color);
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const theme = useColorScheme() ?? 'light';
 
   return (

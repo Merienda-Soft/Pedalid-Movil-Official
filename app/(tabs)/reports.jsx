@@ -1,6 +1,6 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { StyleSheet, Image, Platform, Alert } from 'react-native';
+import { StyleSheet, Image, Platform, Alert, RefreshControl } from 'react-native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -16,6 +16,19 @@ export default function TabTwoScreen() {
   const { showActionSheetWithOptions } = useActionSheet();
   const { authuser } = useAuth(); // Add this
   const { globalState, setGlobalState } = useGlobalState();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      setGlobalState(prev => ({
+        ...prev,
+        assigned: authuser?.asignaciones || []
+      }));
+    } finally {
+      setRefreshing(false);
+    }
+  }, [authuser, setGlobalState]);
 
   // Add auth check
   useEffect(() => {
@@ -100,6 +113,12 @@ export default function TabTwoScreen() {
         <Image
           source={require('@/assets/images/reportes.jpg')}
           style={styles.headerImage}
+        />
+      }
+      refreshControl={
+        <RefreshControl 
+          refreshing={refreshing} 
+          onRefresh={onRefresh}
         />
       }>
       <ThemedView style={styles.titleContainer}>

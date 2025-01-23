@@ -28,7 +28,8 @@ export class AppError extends Error {
 }
 
 export const handleError = (error, customMessage = null) => {
-  
+  console.error('Error:', error);
+
   let customError;
 
   if (error instanceof AppError) {

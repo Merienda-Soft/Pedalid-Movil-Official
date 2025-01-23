@@ -77,12 +77,7 @@ export default function HomeScreen() {
   }
   
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+   
       <ParallaxScrollView
         modo={2}
         headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -91,6 +86,9 @@ export default function HomeScreen() {
             source={require('@/assets/images/cursos.jpg')}
             style={styles.reactLogo}
           />
+        }
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }>
         <ThemedView style={styles.titleContainer}>
           <ThemedText type="title">Cursos</ThemedText>
@@ -128,7 +126,6 @@ export default function HomeScreen() {
           </Collapsible>
         ))}
       </ParallaxScrollView>
-    </ScrollView>
   );
 }
 

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { StyleSheet, Image, Platform, Alert, RefreshControl } from 'react-native';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { ButtonLink } from '@/components/ButtonLink';
-import { useGlobalState } from '@/services/UserContext';
+import ParallaxScrollView from '../../components/ParallaxScrollView';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import { ButtonLink } from '../../components/ButtonLink';
+import { useGlobalState } from '../../services/UserContext';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { useNavigation } from 'expo-router';
-import { useAuth } from '@/services/AuthProvider'; // Add this
+import { useAuth } from '../../services/AuthProvider'; // Add this
 
 export default function TabTwoScreen() {
 
@@ -111,7 +111,7 @@ export default function TabTwoScreen() {
       headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
       headerImage={
         <Image
-          source={require('@/assets/images/reportes.jpg')}
+          source={require('../../assets/images/reportes.jpg')}
           style={styles.headerImage}
         />
       }

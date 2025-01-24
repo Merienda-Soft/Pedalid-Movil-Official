@@ -1,7 +1,7 @@
 import { Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from 'expo-router';
-import { BtnColors } from '@/constants/BtnColors';
-import { useBtnColor } from '@/hooks/useBtnColor';
+import { BtnColors } from '../constants/BtnColors';
+import { useBtnColor } from '../hooks/useBtnColor';
 
 export function ButtonLink({ style, text, modo, screenName, color, onPress }) {
   const btnColor = useBtnColor(color);

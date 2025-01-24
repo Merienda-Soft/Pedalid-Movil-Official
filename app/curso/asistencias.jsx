@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, Button, Alert } from 'react-native';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import ParallaxScrollView from '../../components/ParallaxScrollView';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
 import { Picker } from '@react-native-picker/picker';  // Picker para seleccionar la asistencia
 import DateTimePicker from '@react-native-community/datetimepicker';  // DatePicker para seleccionar la fecha
-import { getStudentsByCourseAndSubject, saveAttendance, getAttendanceByCourseAndDate } from '@/services/attendance';  // Importar el servicio de API
-import { useGlobalState } from '@/services/UserContext';
+import { getStudentsByCourseAndSubject, saveAttendance, getAttendanceByCourseAndDate } from '../../services/attendance';  // Importar el servicio de API
+import { useGlobalState } from '../../services/UserContext';
 
 import { useColorScheme } from 'react-native';
 
@@ -102,7 +102,7 @@ const handleSaveAttendance = async (courseid, materiaid, date, attendances) => {
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <Image
-          source={require('@/assets/images/asistencia.jpg')}
+          source={require('../../assets/images/asistencia.jpg')}
           style={styles.reactLogo}
         />
       }>

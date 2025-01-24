@@ -5,9 +5,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { UserProvider, GlobalStateProvider } from '@/services/UserContext';
-import {AuthProvider} from '@/services/AuthProvider';
+import { useColorScheme } from '../hooks/useColorScheme';
+import { UserProvider, GlobalStateProvider } from '../services/UserContext';
+import {AuthProvider} from '../services/AuthProvider';
 
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 

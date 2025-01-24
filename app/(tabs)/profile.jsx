@@ -1,7 +1,7 @@
 import { Image, StyleSheet, ScrollView } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useAuth } from '@/services/AuthProvider';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import { useAuth } from '../../services/AuthProvider';
 
 export default function ProfileScreen() {
   const { authuser } = useAuth();

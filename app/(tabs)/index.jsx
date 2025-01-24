@@ -1,16 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Collapsible } from '@/components/Collapsible';
-import { CollapsibleOptions } from '@/components/CollapsibleOptions';
+import ParallaxScrollView from '../../components/ParallaxScrollView';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import { Collapsible } from '../../components/Collapsible';
+import { CollapsibleOptions } from '../../components/CollapsibleOptions';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
-import { useUser } from '@/services/UserContext';
-import { useGlobalState } from '@/services/UserContext';
-import { useAuth } from '@/services/AuthProvider';
-import { getTeacherByEmail } from '@/services/teacher';
+import { useUser } from '../../services/UserContext';
+import { useGlobalState } from '../../services/UserContext';
+import { useAuth } from '../../services/AuthProvider';
+import { getTeacherByEmail } from '../../services/teacher';
 import { handleError } from '../../utils/errorHandler';
 
 export default function HomeScreen() {
@@ -83,7 +83,7 @@ export default function HomeScreen() {
         headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
         headerImage={
           <Image
-            source={require('@/assets/images/cursos.jpg')}
+            source={require('../../assets/images/cursos.jpg')}
             style={styles.reactLogo}
           />
         }

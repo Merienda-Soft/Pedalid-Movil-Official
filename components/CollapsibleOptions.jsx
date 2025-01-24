@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
-import { BtnColors } from '@/constants/BtnColors';
-import { useBtnColor } from '@/hooks/useBtnColor';
+import { ThemedText } from '../components/ThemedText';
+import { BtnColors } from '../constants/BtnColors';
+import { useBtnColor } from '../hooks/useBtnColor';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 

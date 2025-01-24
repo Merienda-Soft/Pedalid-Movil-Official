@@ -2,7 +2,7 @@ import React from 'react';
 import { Picker } from '@react-native-picker/picker';
 import { StyleSheet, View } from 'react-native';
 import { ThemedText } from './ThemedText';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { useThemeColor } from '../hooks/useThemeColor';
 
 export function InputComboBox({
   lightColor,

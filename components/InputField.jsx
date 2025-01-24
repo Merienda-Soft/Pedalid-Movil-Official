@@ -1,7 +1,7 @@
 import React from 'react';
 import { TextInput, StyleSheet, View } from 'react-native';
 import { ThemedText } from './ThemedText';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { useThemeColor } from '../hooks/useThemeColor';
 
 export function InputField({ lightColor, darkColor, label, value, onChangeText, secureTextEntry, placeholder = '' }) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TextInput, StyleSheet, View, TouchableOpacity, Platform, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';  // Usando Ionicons para el ícono de búsqueda
 import DateTimePicker from '@react-native-community/datetimepicker';  // Para el selector de fecha
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { useThemeColor } from '../hooks/useThemeColor';
 
 export function InputFilter({
   lightColor,

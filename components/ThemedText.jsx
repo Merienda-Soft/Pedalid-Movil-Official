@@ -1,5 +1,5 @@
 import { Text, StyleSheet } from 'react-native';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { useThemeColor } from '../hooks/useThemeColor';
 
 export function ThemedText({
   style,

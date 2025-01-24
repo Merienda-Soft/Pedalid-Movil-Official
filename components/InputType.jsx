@@ -3,7 +3,7 @@ import { TextInput, StyleSheet, View, TouchableOpacity, Platform, Keyboard, Aler
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ThemedText } from './ThemedText';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { useThemeColor } from '../hooks/useThemeColor';
 
 export function InputType({
   lightColor,

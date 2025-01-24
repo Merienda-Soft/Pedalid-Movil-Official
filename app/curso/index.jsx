@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Alert, Image, StyleSheet, View, ActivityIndicator, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { InputFilter } from '@/components/InputFilter';
-import { ButtonLink } from '@/components/ButtonLink';
+import ParallaxScrollView from '../../components/ParallaxScrollView';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import { InputFilter } from '../../components/InputFilter';
+import { ButtonLink } from '../../components/ButtonLink';
 import { useNavigation  } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
-import { useGlobalState } from '@/services/UserContext';
+import { useGlobalState } from '../../services/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useActionSheet } from '@expo/react-native-action-sheet';
-import { deleteActivity, getActivities } from '@/services/activity';
-import { handleError } from '@/utils/errorHandler';
+import { deleteActivity, getActivities } from '../../services/activity';
+import { handleError } from '../../utils/errorHandler';
 
 export default function TasksScreen() {
 
@@ -180,7 +180,7 @@ export default function TasksScreen() {
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <Image
-          source={require('@/assets/images/task.jpg')}
+          source={require('../../assets/images/task.jpg')}
           style={styles.reactLogo}
         />
       }

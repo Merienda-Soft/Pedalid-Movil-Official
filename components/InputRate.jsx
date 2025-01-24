@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, Text } from 'react-native';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { useThemeColor } from '../hooks/useThemeColor';
 
 export function InputRate({
   lightColor,

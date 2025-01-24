@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Image, StyleSheet, Alert } from 'react-native';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { InputType } from '@/components/InputType';
-import { InputComboBox } from '@/components/InputComboBox';
-import { ButtonLink } from '@/components/ButtonLink';
-import { updateActivity } from '@/services/activity';
-import { useGlobalState } from '@/services/UserContext';
+import ParallaxScrollView from '../../components/ParallaxScrollView';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import { InputType } from '../../components/InputType';
+import { InputComboBox } from '../../components/InputComboBox';
+import { ButtonLink } from '../../components/ButtonLink';
+import { updateActivity } from '../../services/activity';
+import { useGlobalState } from '../../services/UserContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 export default function newTaskScreen() {
@@ -94,7 +94,7 @@ export default function newTaskScreen() {
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <Image
-          source={require('@/assets/images/newtask.jpg')}
+          source={require('../../assets/images/newtask.jpg')}
           style={styles.reactLogo}
         />
       }>

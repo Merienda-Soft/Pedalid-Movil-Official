@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { StyleSheet, Image, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import ParallaxScrollView from '../../components/ParallaxScrollView';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import { useThemeColor } from '../../hooks/useThemeColor';
 import { useRoute } from '@react-navigation/native';
-import { getActivities } from '@/services/activity';
+import { getActivities } from '../../services/activity';
 import { useNavigation } from 'expo-router';
 
 export default function reportsScreen() {
@@ -129,7 +129,7 @@ export default function reportsScreen() {
       headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
       headerImage={
         <Image
-          source={require('@/assets/images/reportes.jpg')}
+          source={require('../../assets/images/reportes.jpg')}
           style={styles.headerImage}
         />
       }>

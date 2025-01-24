@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Image, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { InputRate } from '@/components/InputRate';
+import ParallaxScrollView from '../../components/ParallaxScrollView';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import { InputRate } from '../../components/InputRate';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { useGlobalState } from '@/services/UserContext';
+import { useGlobalState } from '../../services/UserContext';
 
-import { API_BASE_URL } from "@/services/apiConfig";
+import { API_BASE_URL } from "../../services/apiConfig";
 
 export default function TasksScreenCalification() {
   const route = useRoute();
@@ -112,7 +112,7 @@ export default function TasksScreenCalification() {
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <Image
-          source={require('@/assets/images/calificaciones.jpg')}
+          source={require('../../assets/images/calificaciones.jpg')}
           style={styles.reactLogo}
         />
       }>

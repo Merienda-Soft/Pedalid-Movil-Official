@@ -2,12 +2,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/Colors';
+import { ThemedText } from '../components/ThemedText';
+import { ThemedView } from '../components/ThemedView';
+import { Colors } from '../constants/Colors';
 
-import { BtnColors } from '@/constants/BtnColors';
-import { useBtnColor } from '@/hooks/useBtnColor';
+import { BtnColors } from '../constants/BtnColors';
+import { useBtnColor } from '../hooks/useBtnColor';
 
 export function Collapsible({ children, title, color }) {
   const btnColor = useBtnColor(color);

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Image, StyleSheet, Alert } from 'react-native';
+import { useState, useEffect, useMemo } from 'react';
+import { Image, StyleSheet, Alert, View } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -9,11 +9,13 @@ import { ButtonLink } from '../../components/ButtonLink';
 import { updateActivity } from '../../services/activity';
 import { useGlobalState } from '../../services/UserContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useColorScheme } from 'react-native';
 
-export default function newTaskScreen() {
+export default function EditTaskScreen() {
+    const colorScheme = useColorScheme();
     const route = useRoute();
     const { globalState } = useGlobalState();
-    const {cursoid, materiaid, teacherid, materiaName} = globalState
+    const { cursoid, materiaid, teacherid, materiaName } = globalState;
     const navigation = useNavigation();
 
     const [selectedDate, setSelectedDate] = useState('');
@@ -22,8 +24,13 @@ export default function newTaskScreen() {
     const [descripcion, setDescripcion] = useState('');
     const [selectedValue, setSelectedValue] = useState('1'); // Default value
 
-
     const { allTask } = route.params;
+
+    const colors = useMemo(() => ({
+        background: colorScheme === 'dark' ? '#1D3D47' : '#A1CEDC',
+        text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+        secondaryText: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
+    }), [colorScheme]);
 
     useEffect(() => {
         if (allTask) {
@@ -91,7 +98,7 @@ export default function newTaskScreen() {
   return (
     <ParallaxScrollView
       modo={2}
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerBackgroundColor={{ light: colors.background, dark: colors.background }}
       headerImage={
         <Image
           source={require('../../assets/images/newtask.jpg')}
@@ -99,9 +106,20 @@ export default function newTaskScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Editar Tarea</ThemedText>
+        <View style={styles.titleSection}>
+          <ThemedText type="title" style={{ color: colors.text }}>
+            Editar Tarea
+          </ThemedText>
+          <View style={styles.subtitleRow}>
+            <ThemedText type="default" style={[styles.materiaName, { color: colors.secondaryText }]}>
+              {materiaName}
+            </ThemedText>
+            <ThemedText type="default" style={[styles.gestionText, { color: colors.secondaryText }]}>
+              Gestión {globalState.management}
+            </ThemedText>
+          </View>
+        </View>
       </ThemedView>
-        <ThemedText type="default">({materiaName})</ThemedText>
 
       <InputType
         label="Nombre"
@@ -152,10 +170,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    marginBottom: 16,
+    paddingHorizontal: 0,
+  },
+  titleSection: {
+    gap: 4,
+  },
+  subtitleRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  materiaName: {
+    fontSize: 16,
+  },
+  gestionText: {
+    fontSize: 16,
   },
   reactLogo: {
     height: '100%',
     width: '100%',
+    resizeMode: 'cover',
   },
 });

@@ -161,6 +161,9 @@ export default function TabTwoScreen() {
         }>
         <ThemedView style={styles.titleContainer}>
           <ThemedText type="title">Reportes</ThemedText>
+          <ThemedText type="default">
+          Gestión {globalState.management}
+        </ThemedText>
         </ThemedView>
 
         <ButtonLink text="Registro" modo='large' onPress={() => openActionSheet()}  color='info' style={{marginVertical: 0}}/>
@@ -179,8 +182,11 @@ const styles = StyleSheet.create({
     height: '100%'
   },
   titleContainer: {
+    width: '100%',
     flexDirection: 'row',
+    justifyContent: 'space-between',
     gap: 8,
+    marginBottom: 0,
   },
   modalContainer: {
     flex: 1,

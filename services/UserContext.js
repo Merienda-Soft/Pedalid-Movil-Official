@@ -18,12 +18,16 @@ export const UserProvider = ({ children }) => {
 export const GlobalStateProvider = ({ children }) => {
   const [globalState, setGlobalState] = useState({});
 
-  const clearGlobalState = () => {
-    setGlobalState({
-      materiaid: null,
-      cursoid: null,
-      teacherid: null,
-    });
+  const clearGlobalState = (callback) => {
+    if (typeof callback === 'function') {
+      setGlobalState(prevState => ({
+        ...callback(prevState)
+      }));
+    } else {
+      setGlobalState({
+        management: globalState.management // Mantenemos el management por defecto
+      });
+    }
   };
 
   return (

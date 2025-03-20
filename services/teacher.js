@@ -19,14 +19,24 @@ export const authUser = async (credentials) => {
 
 };
 
-export const getTeacherByEmail = async (email) => {
-    const response = await fetch(`${API_BASE_URL}/teachers/email/${email}`);
-    
-    if(!response.ok){
-        throw new Error(`Error fetching teacher: ${response.status}`);
+export const getTeacherByEmail = async (email, management) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/teachers/email/${email}/${management}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     return await response.json();
+  } catch (error) {
+    console.error('Error en getTeacherByEmail:', error);
+    throw error;
+  }
 };
 
 

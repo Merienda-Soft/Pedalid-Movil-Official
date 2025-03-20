@@ -27,8 +27,7 @@ export default function TasksScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Parámetros de ruta
-  const { materiaid, cursoid, teacherid, materiaName } = route.params;
-
+  const { materiaid, cursoid, teacherid, materiaName, management } = route.params;
   // Constantes
   const monthNames = useMemo(() => [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -76,13 +75,19 @@ export default function TasksScreen() {
     fetchTasks();
   }, [fetchTasks]);
 
+  const handleClearGlobalState = useCallback(() => {
+    clearGlobalState(prevState => ({
+      management: prevState.management
+    }));
+  }, [clearGlobalState]);
+
   useFocusEffect(
     useCallback(() => {
       fetchTasks();
 
       const unsubscribe = navigation.addListener('beforeRemove', (e) => {
         if (e.data.action.type === 'GO_BACK') {
-          clearGlobalState();
+          handleClearGlobalState();
         }
       });
 
@@ -90,7 +95,7 @@ export default function TasksScreen() {
         unsubscribe();
         setTasks([]);
       };
-    }, [fetchTasks, navigation, clearGlobalState])
+    }, [fetchTasks, navigation, handleClearGlobalState])
   );
 
   // Manejadores de eventos
@@ -239,10 +244,19 @@ export default function TasksScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title" style={{ color: colors.text }}>Tareas</ThemedText>
-        <ThemedText type="default" style={[styles.materiaName, { color: colors.secondaryText }]}>
-          {materiaName}
-        </ThemedText>
+        <View style={styles.titleSection}>
+          <ThemedText type="title" style={{ color: colors.text }}>
+            Tareas
+          </ThemedText>
+          <View style={styles.subtitleRow}>
+            <ThemedText type="default" style={[styles.materiaName, { color: colors.secondaryText }]}>
+              {materiaName}
+            </ThemedText>
+            <ThemedText type="default" style={[styles.gestionText, { color: colors.secondaryText }]}>
+              Gestión {management}
+            </ThemedText>
+          </View>
+        </View>
       </ThemedView>
       
       <InputFilter
@@ -294,8 +308,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 0,
   },
+  titleSection: {
+  },
+  subtitleRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   materiaName: {
     fontSize: 16,
+  },
+  gestionText: {
+    fontSize: 16,
+    marginLeft: 8,
   },
   searchInput: {
     marginHorizontal: 16,

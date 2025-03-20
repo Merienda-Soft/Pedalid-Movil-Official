@@ -140,13 +140,18 @@ export default function TasksScreenCalification() {
       }>
       <View style={styles.container}>
         <ThemedView style={styles.titleContainer}>
-          <View>
+          <View style={styles.titleSection}>
             <ThemedText type="title" style={{ color: colors.text }}>
               Calificaciones
             </ThemedText>
-            <ThemedText type="default" style={{ color: colors.secondaryText }}>
-              {materiaName}
-            </ThemedText>
+            <View style={styles.subtitleRow}>
+              <ThemedText type="default" style={[styles.materiaName, { color: colors.secondaryText }]}>
+                {materiaName}
+              </ThemedText>
+              <ThemedText type="default" style={[styles.gestionText, { color: colors.secondaryText }]}>
+                Gestión {globalState.management}
+              </ThemedText>
+            </View>
           </View>
           <TouchableOpacity 
             onPress={handleSave}
@@ -193,9 +198,22 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: 16,
+    paddingHorizontal: 0,
+  },
+  titleSection: {
+    gap: 4,
+  },
+  subtitleRow: {
+    width: '90%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  materiaName: {
+    fontSize: 16,
+  },
+  gestionText: {
+    fontSize: 16,
   },
   reactLogo: {
     height: '100%',
@@ -220,8 +238,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveButton: {
-    padding: 12,
-    borderRadius: 8,
+    padding: 0,
   },
   studentsList: {
     gap: 12,

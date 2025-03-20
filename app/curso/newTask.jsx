@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Image, StyleSheet, Alert, useColorScheme } from 'react-native';
+import { Image, StyleSheet, Alert, useColorScheme, View } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -127,12 +127,19 @@ export default function NewTaskScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title" style={{ color: colors.text }}>
-          Nueva Tarea
-        </ThemedText>
-        <ThemedText type="default" style={{ color: colors.secondaryText }}>
-          ({materiaName})
-        </ThemedText>
+        <View style={styles.titleSection}>
+          <ThemedText type="title" style={{ color: colors.text }}>
+            Nueva Tarea
+          </ThemedText>
+          <View style={styles.subtitleRow}>
+            <ThemedText type="default" style={[styles.materiaName, { color: colors.secondaryText }]}>
+              {materiaName}
+            </ThemedText>
+            <ThemedText type="default" style={[styles.gestionText, { color: colors.secondaryText }]}>
+              Gestión {globalState.management}
+            </ThemedText>
+          </View>
+        </View>
       </ThemedView>
 
       <InputType
@@ -199,13 +206,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 0,
   },
+  titleSection: {
+    gap: 4,
+  },
+  subtitleRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  materiaName: {
+    fontSize: 16,
+  },
+  gestionText: {
+    fontSize: 16,
+  },
   reactLogo: {
     height: '100%',
     width: '100%',
     resizeMode: 'cover',
   },
   submitButton: {
-    marginTop: 0,
-    marginBottom: 20,
+    marginTop: 20,
+    marginBottom: 30,
   },
 });

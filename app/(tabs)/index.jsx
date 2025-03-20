@@ -48,12 +48,15 @@ export default function HomeScreen() {
 
     try {
       setIsLoading(true);
-
       const userData = await getTeacherByEmail(authuser.email, selectedManagement);
 
       if (userData) {
         setUser(userData);
-        setGlobalState({ assigned: userData.asignaciones, management: selectedManagement });
+        setGlobalState(prev => ({
+          ...prev,
+          assigned: userData.asignaciones,
+          management: selectedManagement
+        }));
       }
     } catch (err) {
       handleError(err, 'Error al cargar los datos');
@@ -78,14 +81,26 @@ export default function HomeScreen() {
   // Cargar datos cuando cambie la gestión seleccionada
   useEffect(() => {
     if (selectedManagement) {
-      fetchUserData();
+      setIsLoading(true); // Mostrar loading mientras se cargan los datos
+      fetchUserData().finally(() => {
+        setIsLoading(false);
+      });
     }
   }, [selectedManagement, fetchUserData]);
+
+  // Agregar useFocusEffect para recargar los datos cuando la pantalla obtiene el foco
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedManagement) {
+        fetchUserData();
+      }
+    }, [selectedManagement, fetchUserData])
+  );
 
   // Opciones para el combobox de gestiones
   const managementOptions = useMemo(() => {
     return managements.map(management => ({
-      value: management._id,
+      value: management.year,
       text: `Gestión ${management.year}`,
     }));
   }, [managements]);
@@ -93,7 +108,11 @@ export default function HomeScreen() {
   // Función para manejar el cambio de gestión
   const handleManagementChange = useCallback((value) => {
     setSelectedManagement(value);
-  }, []);
+    setGlobalState(prev => ({
+      ...prev,
+      management: value
+    }));
+  }, [setGlobalState]);
 
   // Función para manejar el refresh
   const onRefresh = useCallback(async () => {

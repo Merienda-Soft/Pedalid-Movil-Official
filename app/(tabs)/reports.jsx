@@ -20,7 +20,6 @@ export default function TabTwoScreen() {
   const { globalState, setGlobalState } = useGlobalState();
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -39,6 +38,7 @@ export default function TabTwoScreen() {
       navigation.replace('auth');
       return;
     }
+    
   }, [authuser, navigation]);
 
   // Add check for globalState.assigned

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Image, StyleSheet, Alert } from 'react-native';
+import { useState, useMemo } from 'react';
+import { Image, StyleSheet, Alert, useColorScheme } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -9,64 +9,117 @@ import { ButtonLink } from '../../components/ButtonLink';
 import { createActivity } from '../../services/activity';
 import { useGlobalState } from '../../services/UserContext';
 import { useNavigation } from '@react-navigation/native';
-export default function newTaskScreen() {
+
+export default function NewTaskScreen() {
+  const colorScheme = useColorScheme();
   const { globalState } = useGlobalState();
-  const {cursoid, materiaid, teacherid, materiaName, cursoName} = globalState
+  const { cursoid, materiaid, teacherid, materiaName, cursoName } = globalState;
   const navigation = useNavigation();
 
-    const [selectedDate, setSelectedDate] = useState('');
-    const [name, setName] = useState('');
-    const [ponderacion, setPonderacion] = useState('');
-    const [descripcion, setDescripcion] = useState('');
-    const [selectedValue, setSelectedValue] = useState('1');
+  // Estados
+  const [formData, setFormData] = useState({
+    name: '',
+    date: '',
+    ponderacion: '',
+    descripcion: '',
+    tipo: '1'
+  });
 
-    const options = [
-        { value: '1', text: 'Ser' },
-        { value: '2', text: 'Saber' },
-        { value: '3', text: 'Hacer' },
-        { value: '4', text: 'Decidir' },
-      ];
+  // Colores dinámicos basados en el tema
+  const colors = useMemo(() => ({
+    background: colorScheme === 'dark' ? '#1D3D47' : '#A1CEDC',
+    text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+    secondaryText: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
+    error: '#FF6B6B',
+    success: '#4CAF50'
+  }), [colorScheme]);
 
-    const handleCreateTask = async () => {
-      if (!name || !selectedDate || !ponderacion || !descripcion) {
-        Alert.alert("Error", "Por favor, completa todos los campos.");
-        return;
-      }
+  const options = [
+    { value: '1', text: 'Ser' },
+    { value: '2', text: 'Saber' },
+    { value: '3', text: 'Hacer' },
+    { value: '4', text: 'Decidir' },
+  ];
 
-  
-      const newTask = {
-        name: name,
-        description: descripcion,
-        fecha: selectedDate,
-        horario: "00:00", 
-        ponderacion: `${ponderacion}`,
-        cursoid: cursoid,  
-        materiaid: materiaid,
-        professorid: teacherid, 
-        tipo: Number(selectedValue),
-        fecha_fin: "2024-03-20", 
-      };
-  
-      try {
-        // Enviar los datos al servidor
-        const response = await createActivity(newTask);
-        Alert.alert("Tarea creada con éxito", 'La tarea se creo con exito');
-        navigation.replace("curso", {screen: 'index', params: {
-          materiaName: materiaName,
-          cursoName: cursoName,
-          materiaid: materiaid,
-          cursoid: cursoid,
-          teacherid: teacherid,
-      }})
-      } catch (error) {
-        Alert.alert("Error", `Hubo un problema creando la tarea: ${error.message}`);
-      }
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const validateForm = () => {
+    const { name, date, ponderacion, descripcion } = formData;
+    if (!name || !date || !ponderacion || !descripcion) {
+      Alert.alert(
+        "Campos Incompletos",
+        "Por favor, completa todos los campos requeridos.",
+        [{ text: "Entendido" }]
+      );
+      return false;
+    }
+    
+    const pondValue = Number(ponderacion);
+    if (isNaN(pondValue) || pondValue <= 0 || pondValue > 100) {
+      Alert.alert(
+        "Ponderación Inválida",
+        "La ponderación debe ser un número entre 1 y 100.",
+        [{ text: "Entendido" }]
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleCreateTask = async () => {
+    if (!validateForm()) return;
+
+    const newTask = {
+      name: formData.name,
+      description: formData.descripcion,
+      fecha: formData.date,
+      horario: "00:00",
+      ponderacion: formData.ponderacion,
+      cursoid,
+      materiaid,
+      professorid: teacherid,
+      tipo: Number(formData.tipo),
+      fecha_fin: "2024-03-20",
     };
+
+    try {
+      await createActivity(newTask);
+      Alert.alert(
+        "Éxito",
+        "La tarea se creó correctamente",
+        [{
+          text: "OK",
+          onPress: () => navigation.replace("curso", {
+            screen: 'index',
+            params: {
+              materiaName,
+              cursoName,
+              materiaid,
+              cursoid,
+              teacherid,
+            }
+          })
+        }]
+      );
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "No se pudo crear la tarea. Por favor, intenta nuevamente.",
+        [{ text: "Entendido" }]
+      );
+    }
+  };
 
   return (
     <ParallaxScrollView
       modo={2}
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerBackgroundColor={{ light: colors.background, dark: colors.background }}
       headerImage={
         <Image
           source={require('../../assets/images/newtask.jpg')}
@@ -74,51 +127,66 @@ export default function newTaskScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Nueva Tarea</ThemedText>
-        <ThemedText type="default">({materiaName})</ThemedText>
+        <ThemedText type="title" style={{ color: colors.text }}>
+          Nueva Tarea
+        </ThemedText>
+        <ThemedText type="default" style={{ color: colors.secondaryText }}>
+          ({materiaName})
+        </ThemedText>
       </ThemedView>
 
       <InputType
-        label="Nombre"
-        value={name}
-        onChangeText={setName}
+        label="Nombre de la Tarea"
+        value={formData.name}
+        onChangeText={(value) => handleInputChange('name', value)}
         type="text"
         placeholder="Ej: Tarea 1"
-        />
+        required
+      />
 
       <InputType
-        label="Fecha"
-        value={selectedDate}
-        onChangeText={setSelectedDate}
+        label="Fecha de Entrega"
+        value={formData.date}
+        onChangeText={(value) => handleInputChange('date', value)}
         type="date"
         placeholder="Seleccionar fecha"
-        />
+        required
+      />
 
       <InputType
-        label="Ponderacion %"
-        value={ponderacion}
-        onChangeText={setPonderacion}
+        label="Ponderación (%)"
+        value={formData.ponderacion}
+        onChangeText={(value) => handleInputChange('ponderacion', value)}
         type="number"
-        placeholder="Ingrese la ponderaciond de la tarea"
-        />
+        placeholder="Ingrese un valor entre 1 y 100"
+        keyboardType="numeric"
+        required
+      />
         
       <InputComboBox
-        label="Área de evaluación"
-        selectedValue={selectedValue}
-        onValueChange={setSelectedValue}
+        label="Área de Evaluación"
+        selectedValue={formData.tipo}
+        onValueChange={(value) => handleInputChange('tipo', value)}
         options={options}
-        />
+      />
 
       <InputType
-        label="Descripcion"
-        value={descripcion}
-        onChangeText={setDescripcion}
+        label="Descripción"
+        value={formData.descripcion}
+        onChangeText={(value) => handleInputChange('descripcion', value)}
         type="textarea"
-        placeholder="Seleccionar fecha"
-        />
+        placeholder="Describe los detalles de la tarea..."
+        multiline
+        required
+      />
 
-      <ButtonLink text="Crear tarea" modo='large' onPress={handleCreateTask} color='primary'/>
-
+      <ButtonLink 
+        text="Crear Tarea" 
+        modo='large' 
+        onPress={handleCreateTask} 
+        color='primary'
+        style={styles.submitButton}
+      />
     </ParallaxScrollView>
   );
 }
@@ -127,10 +195,17 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingHorizontal: 0,
   },
   reactLogo: {
     height: '100%',
     width: '100%',
+    resizeMode: 'cover',
+  },
+  submitButton: {
+    marginTop: 0,
+    marginBottom: 20,
   },
 });

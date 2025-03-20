@@ -17,7 +17,7 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ButtonLink text="ENTRAR" modo='large' screenName='auth' color='primary'/>
+        <ButtonLink text="ENTRAR" modo='large' screenName='auth' color='info'/>
       </ThemedView>
       
     </ParallaxScrollView>

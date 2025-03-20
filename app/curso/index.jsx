@@ -1,44 +1,62 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Alert, Image, StyleSheet, View, ActivityIndicator, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Alert, Image, StyleSheet, View, ActivityIndicator, TouchableOpacity, ScrollView, RefreshControl, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { InputFilter } from '../../components/InputFilter';
 import { ButtonLink } from '../../components/ButtonLink';
-import { useNavigation  } from '@react-navigation/native';
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useGlobalState } from '../../services/UserContext';
-import { useFocusEffect } from '@react-navigation/native';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { deleteActivity, getActivities } from '../../services/activity';
 import { handleError } from '../../utils/errorHandler';
 
 export default function TasksScreen() {
-
+  const colorScheme = useColorScheme();
   const { showActionSheetWithOptions } = useActionSheet();
-
   const navigation = useNavigation();
   const route = useRoute();
+  const { clearGlobalState } = useGlobalState();
+
+  // Estados
   const [searchValue, setSearchValue] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
 
+  // Parámetros de ruta
   const { materiaid, cursoid, teacherid, materiaName } = route.params;
-  const { clearGlobalState } = useGlobalState();
 
-  const validateParams = () => {
+  // Constantes
+  const monthNames = useMemo(() => [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ], []);
+
+  // Colores dinámicos basados en el tema
+  const colors = useMemo(() => ({
+    background: colorScheme === 'dark' ? '#1D3D47' : '#A1CEDC',
+    text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+    secondaryText: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
+    border: colorScheme === 'dark' ? '#2A4A54' : '#E0E0E0',
+    button: colorScheme === 'dark' ? '#2A4A54' : '#FFFFFF',
+    icon: colorScheme === 'dark' ? '#FFFFFF' : '#666666',
+    loading: colorScheme === 'dark' ? '#FFFFFF' : '#17A2B8',
+  }), [colorScheme]);
+
+  // Validación de parámetros
+  const validateParams = useCallback(() => {
     if (!materiaid || !cursoid || !teacherid) {
       handleError(new Error('Faltan parámetros para realizar la acción'));
       return false;
     }
     return true;
-  };
+  }, [materiaid, cursoid, teacherid]);
 
-  const fetchTasks = async () => {
+  // Carga de tareas
+  const fetchTasks = useCallback(async () => {
     if (!validateParams()) return;
 
     setIsLoading(true);
@@ -51,7 +69,12 @@ export default function TasksScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [materiaid, cursoid, teacherid, validateParams]);
+
+  // Efectos
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   useFocusEffect(
     useCallback(() => {
@@ -65,62 +88,48 @@ export default function TasksScreen() {
 
       return () => {
         unsubscribe();
-        setTasks([]); // Clean up state on unmount
+        setTasks([]);
       };
-    }, [materiaid, cursoid, teacherid])
+    }, [fetchTasks, navigation, clearGlobalState])
   );
 
-  useEffect(() => {
-    fetchTasks();
-  }, [materiaid, cursoid, teacherid]);
-
-  const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-
-  const handlePrevMonth = () => {
+  // Manejadores de eventos
+  const handlePrevMonth = useCallback(() => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() - 1);
       return newDate;
     });
-  };
+  }, []);
 
-  const handleNextMonth = () => {
+  const handleNextMonth = useCallback(() => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() + 1);
       return newDate;
     });
-  };
+  }, []);
 
-  // Modificar el filtrado de tareas para que sea por mes
-  const filteredTasks = tasks.filter(task => {
-    const taskDate = new Date(task.fecha);
-    const matchesSearch = task.name.toLowerCase().includes(searchValue.toLowerCase());
-    const matchesMonth = taskDate.getMonth() === currentDate.getMonth() && 
-                        taskDate.getFullYear() === currentDate.getFullYear();
-    return matchesSearch && matchesMonth;
-  });
+  const handleDeleteTask = useCallback(async (taskid) => {
+    try {
+      const response = await deleteActivity(taskid);
+      if (!response.ok) {
+        Alert.alert('Error', 'No se pudo eliminar la tarea.');
+        return;
+      }
 
-  const deleteTask = async (taskid) => {
-    const response = await deleteActivity(taskid);
-    if (!response.ok) {
-      Alert.alert('Error', 'No se pudo eliminar la tarea.');
-      return;
+      navigation.replace("curso", {
+        screen: 'index',
+        params: { materiaid, cursoid, teacherid }
+      });
+
+      Alert.alert('Éxito', 'Tarea eliminada con éxito');
+    } catch (error) {
+      handleError(error, 'Error al eliminar la tarea');
     }
+  }, [materiaid, cursoid, teacherid, navigation]);
 
-    navigation.replace("curso", {screen: 'index', params: {
-      materiaid: materiaid,
-      cursoid: cursoid,
-      teacherid: teacherid
-    }});
-
-    Alert.alert('Exito', 'Tarea eliminada con éxito');
-  }
-
-  const openActionSheet = (task) => {
+  const handleActionSheet = useCallback((task) => {
     const options = ['Calificar', 'Editar', 'Eliminar'];
     const cancelButtonIndex = 3;
     const destructiveButtonIndex = 2;
@@ -133,29 +142,33 @@ export default function TasksScreen() {
         title: `Opciones de "${task.name}"`,
       },
       (buttonIndex) => {
-        if (buttonIndex === 0) {
-          // Navegar a la pantalla de calificaciones
-          navigation.navigate('calificaciones', { screen: 'index', params: { students: task.estudiantes, allTask: task } });
-        } else if (buttonIndex === 1) {
-          // Acción de Editar
-          navigation.navigate('calificaciones', { screen: 'editTask', params: { allTask: task } });
-
-        } else if (buttonIndex === 2) {
-          Alert.alert(
-            'Emilinacion',
-            `¿Deseas eliminar "${task.name}"?`,
-            [
-              { text: 'No', style: 'cancel'},
-              { text: 'Sí', onPress: () => {
-                  deleteTask(task._id);
-                  
-              }},
-            ]
-          );
+        switch (buttonIndex) {
+          case 0:
+            navigation.navigate('calificaciones', {
+              screen: 'index',
+              params: { students: task.estudiantes, allTask: task }
+            });
+            break;
+          case 1:
+            navigation.navigate('calificaciones', {
+              screen: 'editTask',
+              params: { allTask: task }
+            });
+            break;
+          case 2:
+            Alert.alert(
+              'Eliminación',
+              `¿Deseas eliminar "${task.name}"?`,
+              [
+                { text: 'No', style: 'cancel' },
+                { text: 'Sí', onPress: () => handleDeleteTask(task._id) },
+              ]
+            );
+            break;
         }
       }
     );
-  };
+  }, [navigation, handleDeleteTask]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -164,20 +177,53 @@ export default function TasksScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchTasks]);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
+  // Filtrado de tareas
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      const taskDate = new Date(task.fecha);
+      const matchesSearch = task.name.toLowerCase().includes(searchValue.toLowerCase());
+      const matchesMonth = taskDate.getMonth() === currentDate.getMonth() && 
+                          taskDate.getFullYear() === currentDate.getFullYear();
+      return matchesSearch && matchesMonth;
+    });
+  }, [tasks, searchValue, currentDate]);
 
+  // Renderizado de tareas
+  const renderTasks = useMemo(() => {
+    if (filteredTasks.length === 0) {
+      return (
+        <ThemedView style={styles.emptyContainer}>
+          <ThemedText style={[styles.emptyText, { color: colors.secondaryText }]}>
+            No hay tareas para este mes
+          </ThemedText>
+        </ThemedView>
+      );
+    }
+
+    return filteredTasks.map((task) => {
+      const date = new Date(task.fecha);
+      const formattedDate = `${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}`;
+
+      return (
+        <ButtonLink
+          key={task._id}
+          text={`${formattedDate}     ${task.name}     ponderación ${task.ponderacion}%`}
+          modo="large"
+          onPress={() => handleActionSheet(task)}
+          color="secondary"
+          style={styles.taskButton}
+        />
+      );
+    });
+  }, [filteredTasks, handleActionSheet, colors.secondaryText]);
+
+  // Renderizado principal
   return (
     <ParallaxScrollView
       modo={2}
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerBackgroundColor={{ light: colors.background, dark: colors.background }}
       headerImage={
         <Image
           source={require('../../assets/images/task.jpg')}
@@ -188,11 +234,15 @@ export default function TasksScreen() {
         <RefreshControl 
           refreshing={refreshing} 
           onRefresh={onRefresh}
+          tintColor={colors.text}
+          colors={[colors.loading]}
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Tareas</ThemedText>
-        <ThemedText type="default">({materiaName})</ThemedText>
+        <ThemedText type="title" style={{ color: colors.text }}>Tareas</ThemedText>
+        <ThemedText type="default" style={[styles.materiaName, { color: colors.secondaryText }]}>
+          {materiaName}
+        </ThemedText>
       </ThemedView>
       
       <InputFilter
@@ -200,41 +250,38 @@ export default function TasksScreen() {
         onChangeText={setSearchValue}
         onPress={() => {}}
         type="search"
-        placeholder="Buscar..."
+        placeholder="Buscar tarea..."
+        style={styles.searchInput}
+        placeholderTextColor={colors.secondaryText}
       />
 
-      {/* Nuevo componente de navegación por mes */}
-      <View style={styles.monthNavigator}>
-        <TouchableOpacity onPress={handlePrevMonth}>
-          <Ionicons name="chevron-back" size={24} color="#666" />
+      <View style={[styles.monthNavigator, { backgroundColor: colors.border }]}>
+        <TouchableOpacity 
+          onPress={handlePrevMonth} 
+          style={[styles.monthButton, { backgroundColor: colors.button }]}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.icon} />
         </TouchableOpacity>
         
-        <ThemedText type="subtitle">
+        <ThemedText type="subtitle" style={[styles.monthText, { color: colors.text }]}>
           {`${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
         </ThemedText>
         
-        <TouchableOpacity onPress={handleNextMonth}>
-          <Ionicons name="chevron-forward" size={24} color="#666" />
+        <TouchableOpacity 
+          onPress={handleNextMonth} 
+          style={[styles.monthButton, { backgroundColor: colors.button }]}
+        >
+          <Ionicons name="chevron-forward" size={24} color={colors.icon} />
         </TouchableOpacity>
       </View>
 
-    {filteredTasks.map((task) => {
-      const date = new Date(task.fecha);
-      const formattedDate = `${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}`;
-
-      return (
-        <ButtonLink
-          key={task._id}
-          text={`${formattedDate}     ${task.name}     ponderacion ${task.ponderacion}%`}
-          modo="large"
-          onPress={() => openActionSheet(task)} 
-          color="secondary"
-          style={{ marginVertical: 0 }}
-        />
-      );
-    })}
-
-
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.loading} />
+        </View>
+      ) : (
+        renderTasks
+      )}
     </ParallaxScrollView>
   );
 }
@@ -244,26 +291,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    marginBottom: 16,
+    paddingHorizontal: 0,
   },
-  reactLogo: {
-    height: '100%',
-    width: '100%',
+  materiaName: {
+    fontSize: 16,
   },
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  searchInput: {
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
   monthNavigator: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 5,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    paddingVertical: 8,
+  },
+  monthButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  monthText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  taskButton: {
+    marginVertical: 4,
+    marginHorizontal: 16,
+  },
+  reactLogo: {
+    height: '100%',
+    width: '100%',
   },
 });

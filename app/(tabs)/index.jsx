@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
@@ -14,51 +14,49 @@ import { getTeacherByEmail } from '../../services/teacher';
 import { handleError } from '../../utils/errorHandler';
 
 export default function HomeScreen() {
-
   const navigation = useNavigation();
   const { authuser } = useAuth();
-  const { globalState, setGlobalState, clearGlobalState } = useGlobalState();
+  const { globalState, setGlobalState } = useGlobalState();
   const { user, setUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (!authuser) {
-      navigation.replace('auth'); // Replace with your auth route
-      return;
-    }
-  }, [authuser, navigation]);
+  // Función para cargar datos del usuario
+  const fetchUserData = useCallback(async () => {
+    if (!authuser?.email) return;
 
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchUserData();
-    }, [])
-  );
-
-  useEffect(() => {
-    if (!authuser || !authuser.email) {
-      navigation.navigate('index'); // Redirige al login si authuser es nulo
-      return;
-    }
-    fetchUserData();
-  }, [authuser.email, setUser, authuser, navigation]);
-
-  const fetchUserData = async () => {
     try {
       setIsLoading(true);
       const userData = await getTeacherByEmail(authuser.email);
       if (userData) {
         setUser(userData);
-        setGlobalState({ assigned: userData.asignaciones })
+        setGlobalState({ assigned: userData.asignaciones });
       }
     } catch (err) {
       handleError(err, 'Error al cargar los datos');
-      Alert.alert('Error', 'Aun no tienes materias asignadas?');
+      Alert.alert('Error', 'No se pudieron cargar las materias asignadas');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [authuser?.email, setUser, setGlobalState]);
 
+  // Verificación de autenticación
+  useEffect(() => {
+    if (!authuser?.email) {
+      navigation.replace('auth');
+    }
+  }, [authuser, navigation]);
+
+  // Carga de datos cuando la pantalla está en foco
+  useFocusEffect(
+    useCallback(() => {
+      if (authuser?.email) {
+        fetchUserData();
+      }
+    }, [fetchUserData, authuser?.email])
+  );
+
+  // Función para manejar el refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -66,66 +64,91 @@ export default function HomeScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchUserData]);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-  
-  return (
-   
-      <ParallaxScrollView
-        modo={2}
-        headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-        headerImage={
-          <Image
-            source={require('../../assets/images/cursos.jpg')}
-            style={styles.reactLogo}
-          />
-        }
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Cursos</ThemedText>
+  // Función para manejar la selección de materia
+  const handleMateriaSelect = useCallback((curso, materia) => {
+    if (!materia._id || !curso._id || !user._id) {
+      Alert.alert('Error', 'Datos incompletos para acceder al curso');
+      return;
+    }
+
+    setGlobalState({
+      materiaid: materia._id,
+      cursoid: curso._id,
+      teacherid: user._id,
+      materiaName: materia.name,
+      cursoName: curso.name,
+    });
+
+    navigation.navigate("curso", {
+      screen: 'index',
+      params: {
+        materiaName: materia.name,
+        cursoName: curso.name,
+        materiaid: materia._id,
+        cursoid: curso._id,
+        teacherid: user._id,
+      }
+    });
+  }, [user, setGlobalState, navigation]);
+
+  // Renderizado de la lista de cursos
+  const renderCursos = useMemo(() => {
+    if (!user?.asignaciones?.length) {
+      return (
+        <ThemedView style={styles.emptyContainer}>
+          <ThemedText style={styles.emptyText}>
+            No tienes cursos asignados
+          </ThemedText>
         </ThemedView>
+      );
+    }
 
-        {user?.asignaciones.map((curso) => (
-          <Collapsible key={curso.curso._id} title={curso.curso.name} color="info">
-            {curso.materias.map((materia) => (
-              <CollapsibleOptions
-                key={materia._id}
-                title={materia.name}
-                color="info"
-                onPress={() => {
-                  setGlobalState({
-                    materiaid: materia._id,
-                    cursoid: curso.curso._id,
-                    teacherid: user._id,
-                    materiaName: materia.name,
-                    cursoName: curso.curso.name,
-                  })
-                  if (materia._id, curso._id, user._id) {
-                    navigation.navigate("curso", {
-                      screen: 'index', params: {
-                        materiaName: materia.name,
-                        cursoName: curso.curso.name,
-                        materiaid: materia._id,
-                        cursoid: curso.curso._id,
-                        teacherid: user._id,
-                      }
-                    })
-                  }
-                }}
-              />
-            ))}
-          </Collapsible>
+    return user.asignaciones.map((curso) => (
+      <Collapsible 
+        key={curso.curso._id} 
+        title={curso.curso.name} 
+        color="info"
+      >
+        {curso.materias.map((materia) => (
+          <CollapsibleOptions
+            key={materia._id}
+            title={materia.name}
+            color="info"
+            onPress={() => handleMateriaSelect(curso.curso, materia)}
+          />
         ))}
-      </ParallaxScrollView>
+      </Collapsible>
+    ));
+  }, [user?.asignaciones, handleMateriaSelect]);
+
+  return (
+    <ParallaxScrollView
+      modo={2}
+      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerImage={
+        <Image
+          source={require('../../assets/images/cursos.jpg')}
+          style={styles.reactLogo}
+        />
+      }
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">Cursos</ThemedText>
+      </ThemedView>
+
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#17A2B8" />
+        </View>
+      ) : (
+        renderCursos
+      )}
+    </ParallaxScrollView>
   );
 }
 
@@ -137,6 +160,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   titleContainer: {
     flexDirection: 'row',

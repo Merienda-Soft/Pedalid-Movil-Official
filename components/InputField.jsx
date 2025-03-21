@@ -50,6 +50,7 @@ export function InputField({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
+    
   },
   label: {
     marginBottom: 8,
@@ -64,6 +65,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderWidth: 1,
     borderColor: '#e0e0e0',
+    
   },
   input: {
     flex: 1,

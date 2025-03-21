@@ -68,7 +68,6 @@ export default function TasksScreen() {
       const taskData = await getActivities(materiaid, cursoid, teacherid);
       setTasks(taskData);
     } catch (error) {
-      handleError(error, 'No hay tareas registradas para esta materia');
       setTasks([]);
     } finally {
       setIsLoading(false);

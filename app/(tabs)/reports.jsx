@@ -20,6 +20,7 @@ export default function TabTwoScreen() {
   const { globalState, setGlobalState } = useGlobalState();
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -31,7 +32,7 @@ export default function TabTwoScreen() {
       setRefreshing(false);
     }
   }, [authuser, setGlobalState]);
-
+  console.log(globalState)
   // Add auth check
   useEffect(() => {
     if (!authuser) {

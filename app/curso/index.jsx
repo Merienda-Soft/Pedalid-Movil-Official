@@ -23,11 +23,16 @@ export default function TasksScreen() {
   const [searchValue, setSearchValue] = useState('');
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
-
+  
   // Parámetros de ruta
-  const { materiaid, cursoid, teacherid, materiaName, management } = route.params;
+  const { materiaid, cursoid, teacherid, materiaName, management } = route.params
+  
+  const [currentDate, setCurrentDate] = useState(() => {
+    const currentMonth = new Date().getMonth();
+    return new Date(management, currentMonth, 1);
+  });
+  
   // Constantes
   const monthNames = useMemo(() => [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -102,7 +107,12 @@ export default function TasksScreen() {
   const handlePrevMonth = useCallback(() => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() - 1);
+      if (newDate.getMonth() === 0) {
+        // Si estamos en enero, ir a diciembre del mismo año de gestión
+        newDate.setMonth(11);
+      } else {
+        newDate.setMonth(prev.getMonth() - 1);
+      }
       return newDate;
     });
   }, []);
@@ -110,7 +120,12 @@ export default function TasksScreen() {
   const handleNextMonth = useCallback(() => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + 1);
+      if (newDate.getMonth() === 11) {
+        // Si estamos en diciembre, ir a enero del mismo año de gestión
+        newDate.setMonth(0);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
       return newDate;
     });
   }, []);
@@ -125,7 +140,7 @@ export default function TasksScreen() {
 
       navigation.replace("curso", {
         screen: 'index',
-        params: { materiaid, cursoid, teacherid }
+        params: { materiaid, cursoid, teacherid, management }
       });
 
       Alert.alert('Éxito', 'Tarea eliminada con éxito');
@@ -278,7 +293,7 @@ export default function TasksScreen() {
         </TouchableOpacity>
         
         <ThemedText type="subtitle" style={[styles.monthText, { color: colors.text }]}>
-          {`${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
+          {monthNames[currentDate.getMonth()]}
         </ThemedText>
         
         <TouchableOpacity 

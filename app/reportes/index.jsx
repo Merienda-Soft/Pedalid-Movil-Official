@@ -338,6 +338,7 @@ const styles = StyleSheet.create({
   headerCell: {
     width: 120,
     fontWeight: 'bold',
+    textAlign: 'center',
     fontSize: 15,
   },
   headerButton: {

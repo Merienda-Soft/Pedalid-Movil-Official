@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   eyeIcon: {
     position: 'absolute',
     right: 12,
-    top: 45,
+    top: 41,
     padding: 4,
   },
   loginButton: {

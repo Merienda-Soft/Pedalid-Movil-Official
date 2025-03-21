@@ -90,6 +90,7 @@ export default function NewTaskScreen() {
 
     try {
       await createActivity(newTask);
+      const management = globalState.management;
       Alert.alert(
         "Éxito",
         "La tarea se creó correctamente",
@@ -103,6 +104,7 @@ export default function NewTaskScreen() {
               materiaid,
               cursoid,
               teacherid,
+              management
             }
           })
         }]

@@ -81,10 +81,12 @@ export default function EditTaskScreen() {
         const response = await updateActivity(newTask);
         if(response.ok){
           Alert.alert("Tarea actualizada con éxito", 'La tarea se actualizo con exito');
+          const management = globalState.management
           navigation.replace("curso", {screen: 'index', params: {
             materiaid: materiaid,
             cursoid: cursoid,
             teacherid: teacherid,
+            management
           }})
         }else{
           Alert.alert("Error", 'La tarea no se actualizo');

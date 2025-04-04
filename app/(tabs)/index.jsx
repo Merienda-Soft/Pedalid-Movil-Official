@@ -31,20 +31,25 @@ export default function HomeScreen() {
       const response = await getManagements();
       if (response.success && response.managements) {
         setManagements(response.managements);
-        // Encontrar y establecer la gestión activa por defecto
         const activeManagement = response.managements.find(m => m.status === 1);
-        if (activeManagement) {
-          setSelectedManagement(activeManagement.management);
+        if (activeManagement && (!selectedManagement || selectedManagement.id !== activeManagement.id)) {
+          setSelectedManagement({
+            id: activeManagement.id,
+            management: activeManagement.management
+          });
           setGlobalState(prev => ({
             ...prev,
-            management: activeManagement.management
+            management: {
+              id: activeManagement.id,
+              management: activeManagement.management
+            }
           }));
         }
       }
     } catch (error) {
       handleError(error, 'Error al cargar las gestiones');
     }
-  }, [setGlobalState]);
+  }, [selectedManagement, setGlobalState]);
 
   // Función para cargar datos del usuario
   const fetchUserData = useCallback(async () => {
@@ -55,12 +60,9 @@ export default function HomeScreen() {
       const response = await getTeacherByEmail(authuser.email);
 
       if (response.success && response.professor) {
-        // Primero agrupamos las asignaciones por curso
         const cursosMaterias = response.professor.assignments.reduce((acc, assignment) => {
           const cursoId = assignment.course.id;
-          
           if (!acc[cursoId]) {
-            // Si el curso no existe, lo creamos con su primera materia
             acc[cursoId] = {
               curso: {
                 _id: assignment.course.id,
@@ -71,31 +73,38 @@ export default function HomeScreen() {
               materias: []
             };
           }
-          
-          // Agregamos la materia al curso existente
           acc[cursoId].materias.push({
             _id: assignment.subject.id,
             name: assignment.subject.subject,
           });
-
           return acc;
         }, {});
 
-        // Transformar los datos al formato que espera la aplicación
         const transformedData = {
           _id: response.professor.id,
           name: response.professor.person.name,
           lastname: response.professor.person.lastname,
           email: response.professor.person.email,
-          asignaciones: Object.values(cursosMaterias) // Convertir el objeto agrupado en array
+          asignaciones: Object.values(cursosMaterias)
         };
 
-        setUser(transformedData);
-        setGlobalState(prev => ({
-          ...prev,
-          assigned: transformedData.asignaciones,
-          management: selectedManagement
-        }));
+        setUser(prevUser => {
+          if (!prevUser || JSON.stringify(prevUser.asignaciones) !== JSON.stringify(transformedData.asignaciones)) {
+            return transformedData;
+          }
+          return prevUser;
+        });
+
+        setGlobalState(prev => {
+          if (!prev.assigned || JSON.stringify(prev.assigned) !== JSON.stringify(transformedData.asignaciones)) {
+            return {
+              ...prev,
+              assigned: transformedData.asignaciones,
+              management: selectedManagement
+            };
+          }
+          return prev;
+        });
       }
     } catch (err) {
       handleError(err, 'Error al cargar los datos');
@@ -151,12 +160,21 @@ export default function HomeScreen() {
 
   // Función para manejar el cambio de gestión
   const handleManagementChange = useCallback((value) => {
-    setSelectedManagement(value);
-    setGlobalState(prev => ({
-      ...prev,
-      management: value
-    }));
-  }, [setGlobalState]);
+    const selectedMgmt = managements.find(m => m.management === value);
+    if (selectedMgmt && (selectedManagement?.id !== selectedMgmt.id)) {
+      setSelectedManagement({
+        id: selectedMgmt.id,
+        management: selectedMgmt.management
+      });
+      setGlobalState(prev => ({
+        ...prev,
+        management: {
+          id: selectedMgmt.id,
+          management: selectedMgmt.management
+        }
+      }));
+    }
+  }, [selectedManagement, managements, setGlobalState]);
 
   // Opciones para el combobox de gestiones
   const managementOptions = useMemo(() => {
@@ -243,14 +261,14 @@ export default function HomeScreen() {
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Cursos</ThemedText>
         <ThemedText type="default">
-          Gestión {globalState.management}
+          Gestión {globalState.management?.management}
         </ThemedText>
       </ThemedView>
 
       <ThemedView>
         <InputComboBox
           label="Gestión Académica"
-          selectedValue={selectedManagement}
+          selectedValue={selectedManagement?.management}
           onValueChange={handleManagementChange}
           options={managementOptions}
           style={styles.managementSelect}

@@ -30,7 +30,7 @@ export default function TasksScreen() {
   
   const [currentDate, setCurrentDate] = useState(() => {
     const currentMonth = new Date().getMonth();
-    return new Date(management, currentMonth, 1);
+    return new Date(management.management, currentMonth, 1);
   });
   
   // Constantes
@@ -65,15 +65,25 @@ export default function TasksScreen() {
 
     setIsLoading(true);
     try {
-      const taskData = await getActivities(materiaid, cursoid, teacherid, management);
-      console.log(materiaid, cursoid, teacherid, management);
-      setTasks(taskData);
+      const taskData = await getActivities(materiaid, cursoid, teacherid, management.id);
+      // Transformar los datos de las tareas al formato necesario
+      const transformedTasks = taskData.map(task => ({
+        id: task.id,
+        name: task.name,
+        description: task.description,
+        weight: task.weight,
+        createDate: new Date(task.create_date),
+        subject: task.subject.subject,
+        dimension: task.dimension.dimension,
+        assignments: task.assignments,
+      }));
+      setTasks(transformedTasks);
     } catch (error) {
       setTasks([]);
     } finally {
       setIsLoading(false);
     }
-  }, [materiaid, cursoid, teacherid, validateParams]);
+  }, [materiaid, cursoid, teacherid, validateParams, management.id]);
 
   // Efectos
   useEffect(() => {
@@ -202,10 +212,10 @@ export default function TasksScreen() {
   // Filtrado de tareas
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      const taskDate = new Date(task.fecha);
+      const taskCreateDate = new Date(task.createDate);
       const matchesSearch = task.name.toLowerCase().includes(searchValue.toLowerCase());
-      const matchesMonth = taskDate.getMonth() === currentDate.getMonth() && 
-                          taskDate.getFullYear() === currentDate.getFullYear();
+      const matchesMonth = taskCreateDate.getMonth() === currentDate.getMonth() && 
+                           taskCreateDate.getFullYear() === currentDate.getFullYear();
       return matchesSearch && matchesMonth;
     });
   }, [tasks, searchValue, currentDate]);
@@ -223,13 +233,12 @@ export default function TasksScreen() {
     }
 
     return filteredTasks.map((task) => {
-      const date = new Date(task.fecha);
-      const formattedDate = `${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}`;
+      const formattedCreateDate = `${task.createDate.getUTCFullYear()}/${String(task.createDate.getUTCMonth() + 1).padStart(2, '0')}/${String(task.createDate.getUTCDate()).padStart(2, '0')}`;
 
       return (
         <ButtonLink
-          key={task._id}
-          text={`${formattedDate}     ${task.name}     ponderación ${task.ponderacion}%`}
+          key={task.id}
+          text={`${formattedCreateDate}     ${task.name}     ponderación ${task.weight}%`}
           modo="large"
           onPress={() => handleActionSheet(task)}
           color="secondary"
@@ -268,7 +277,7 @@ export default function TasksScreen() {
               {materiaName}
             </ThemedText>
             <ThemedText type="default" style={[styles.gestionText, { color: colors.secondaryText }]}>
-              Gestión {management}
+              Gestión {management.management}
             </ThemedText>
           </View>
         </View>

@@ -65,7 +65,8 @@ export default function TasksScreen() {
 
     setIsLoading(true);
     try {
-      const taskData = await getActivities(materiaid, cursoid, teacherid);
+      const taskData = await getActivities(materiaid, cursoid, teacherid, management);
+      console.log(materiaid, cursoid, teacherid, management);
       setTasks(taskData);
     } catch (error) {
       setTasks([]);

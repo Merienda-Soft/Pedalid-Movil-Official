@@ -1,17 +1,11 @@
 import { API_BASE_URL } from "./apiConfig";
 
-/**
- * Obtiene todos los registros de gestión
- * @param {string} email - Email del usuario (opcional)
- * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
- */
 export const getManagements = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/managements/all`, {
+        const response = await fetch(`${API_BASE_URL}/management`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                // Si tienes un sistema de autenticación, aquí irían los headers necesarios
             }
         });
 
@@ -20,16 +14,10 @@ export const getManagements = async () => {
         }
 
         const data = await response.json();
-        return {
-            success: true,
-            data
-        };
+        return data;
     } catch (error) {
         console.error('Error en getManagement:', error);
-        return {
-            success: false,
-            error: 'Error al obtener los datos de gestiónes'
-        };
+        throw error;
     }
 };
 

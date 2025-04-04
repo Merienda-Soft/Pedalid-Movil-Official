@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "./apiConfig";
 
-export const getActivities = async (materiaId, cursoId, techerId) => {
-    const response = await fetch(`${API_BASE_URL}/activities/filter?materiaid=${materiaId}&cursoid=${cursoId}&teacherid=${techerId}`);
+export const getActivities = async (materiaId, cursoId, teacherId, managementId) => {
+    const response = await fetch(`${API_BASE_URL}/tasks/professor/${teacherId}/course/${cursoId}/subject/${materiaId}/management/${managementId}`);
 
     if (response.status === 404) {
         throw new Error('NO_TASKS');

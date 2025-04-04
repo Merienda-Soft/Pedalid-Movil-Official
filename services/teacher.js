@@ -19,9 +19,9 @@ export const authUser = async (credentials) => {
 
 };
 
-export const getTeacherByEmail = async (email, management) => {
+export const getTeacherByEmail = async (email) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/teachers/email/${email}/${management}`, {
+    const response = await fetch(`${API_BASE_URL}/professors/${email}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

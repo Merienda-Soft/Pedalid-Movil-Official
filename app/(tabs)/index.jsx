@@ -29,18 +29,22 @@ export default function HomeScreen() {
   const fetchManagements = useCallback(async () => {
     try {
       const response = await getManagements();
-      if (response.success && response.data) {
-        setManagements(response.data);
+      if (response.success && response.managements) {
+        setManagements(response.managements);
         // Encontrar y establecer la gestión activa por defecto
-        const activeManagement = response.data.find(m => m.status === 1);
+        const activeManagement = response.managements.find(m => m.status === 1);
         if (activeManagement) {
-          setSelectedManagement(activeManagement.year);
+          setSelectedManagement(activeManagement.management);
+          setGlobalState(prev => ({
+            ...prev,
+            management: activeManagement.management
+          }));
         }
       }
     } catch (error) {
       handleError(error, 'Error al cargar las gestiones');
     }
-  }, []);
+  }, [setGlobalState]);
 
   // Función para cargar datos del usuario
   const fetchUserData = useCallback(async () => {
@@ -48,13 +52,48 @@ export default function HomeScreen() {
 
     try {
       setIsLoading(true);
-      const userData = await getTeacherByEmail(authuser.email, selectedManagement);
+      const response = await getTeacherByEmail(authuser.email);
 
-      if (userData) {
-        setUser(userData);
+      if (response.success && response.professor) {
+        // Primero agrupamos las asignaciones por curso
+        const cursosMaterias = response.professor.assignments.reduce((acc, assignment) => {
+          const cursoId = assignment.course.id;
+          
+          if (!acc[cursoId]) {
+            // Si el curso no existe, lo creamos con su primera materia
+            acc[cursoId] = {
+              curso: {
+                _id: assignment.course.id,
+                name: assignment.course.course,
+                parallel: assignment.course.parallel.trim(),
+              },
+              professor: assignment.professor_id,
+              materias: []
+            };
+          }
+          
+          // Agregamos la materia al curso existente
+          acc[cursoId].materias.push({
+            _id: assignment.subject.id,
+            name: assignment.subject.subject,
+          });
+
+          return acc;
+        }, {});
+
+        // Transformar los datos al formato que espera la aplicación
+        const transformedData = {
+          _id: response.professor.id,
+          name: response.professor.person.name,
+          lastname: response.professor.person.lastname,
+          email: response.professor.person.email,
+          asignaciones: Object.values(cursosMaterias) // Convertir el objeto agrupado en array
+        };
+
+        setUser(transformedData);
         setGlobalState(prev => ({
           ...prev,
-          assigned: userData.asignaciones,
+          assigned: transformedData.asignaciones,
           management: selectedManagement
         }));
       }
@@ -66,10 +105,25 @@ export default function HomeScreen() {
     }
   }, [authuser?.email, selectedManagement, setUser, setGlobalState]);
 
-  // Cargar gestiones al inicio
+  // Función para cargar todos los datos
+  const loadAllData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await fetchManagements();
+      if (selectedManagement) {
+        await fetchUserData();
+      }
+    } catch (error) {
+      handleError(error, 'Error al cargar los datos');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchManagements, fetchUserData, selectedManagement]);
+
+  // Cargar datos al inicio
   useEffect(() => {
-    fetchManagements();
-  }, [fetchManagements]);
+    loadAllData();
+  }, [loadAllData]);
 
   // Verificación de autenticación
   useEffect(() => {
@@ -78,32 +132,22 @@ export default function HomeScreen() {
     }
   }, [authuser, navigation]);
 
-  // Cargar datos cuando cambie la gestión seleccionada
-  useEffect(() => {
-    if (selectedManagement) {
-      setIsLoading(true); // Mostrar loading mientras se cargan los datos
-      fetchUserData().finally(() => {
-        setIsLoading(false);
-      });
-    }
-  }, [selectedManagement, fetchUserData]);
-
-  // Agregar useFocusEffect para recargar los datos cuando la pantalla obtiene el foco
+  // Modificar el useFocusEffect para recargar todo
   useFocusEffect(
     useCallback(() => {
-      if (selectedManagement) {
-        fetchUserData();
-      }
-    }, [selectedManagement, fetchUserData])
+      loadAllData();
+    }, [loadAllData])
   );
 
-  // Opciones para el combobox de gestiones
-  const managementOptions = useMemo(() => {
-    return managements.map(management => ({
-      value: management.year,
-      text: `Gestión ${management.year}`,
-    }));
-  }, [managements]);
+  // Función para manejar el refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadAllData();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadAllData]);
 
   // Función para manejar el cambio de gestión
   const handleManagementChange = useCallback((value) => {
@@ -114,15 +158,13 @@ export default function HomeScreen() {
     }));
   }, [setGlobalState]);
 
-  // Función para manejar el refresh
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await fetchUserData();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [fetchUserData]);
+  // Opciones para el combobox de gestiones
+  const managementOptions = useMemo(() => {
+    return managements.map(management => ({
+      value: management.management,
+      text: `Gestión ${management.management}`,
+    }));
+  }, [managements]);
 
   // Función para manejar la selección de materia
   const handleMateriaSelect = useCallback((curso, materia) => {

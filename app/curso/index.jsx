@@ -176,7 +176,7 @@ export default function TasksScreen() {
           case 0:
             navigation.navigate('calificaciones', {
               screen: 'index',
-              params: { students: task.estudiantes, allTask: task }
+              params: { idTask: task.id }
             });
             break;
           case 1:

@@ -46,18 +46,17 @@ export const createActivity = async (activityData) => {
     return await response.json();
   };
 
-export const updateActivity = async (activityData) => {
-  const response = await fetch(`${API_BASE_URL}/tasks/${activityData.task.id}`, {
-    method: "PUT",
+export const updateActivity = async (activityId, studentsData) => {
+  const response = await fetch(`${API_BASE_URL}/tasks/${activityId}/grade`, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-
-    body: JSON.stringify(activityData.task),
+    body: JSON.stringify({ students: studentsData }),
   });
 
-  return response.json();
-}
+  return response;
+};
 
 export const deleteActivity = async (idActivity) => {
   const response = await fetch(`${API_BASE_URL}/tasks/${idActivity}`, {

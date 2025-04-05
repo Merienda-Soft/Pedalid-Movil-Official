@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Image, StyleSheet, Alert, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Image, StyleSheet, Alert, TouchableOpacity, useColorScheme, View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
@@ -8,13 +8,17 @@ import { InputRate } from '../../components/InputRate';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useGlobalState } from '../../services/UserContext';
 import { API_BASE_URL } from "../../services/apiConfig";
+import { getActivityByIdwithassignments, updateActivity } from '../../services/activity';
 
 export default function TasksScreenCalification() {
   const colorScheme = useColorScheme();
   const route = useRoute();
   const navigation = useNavigation();
-  const { students, allTask } = route.params;
-  const [estudiantes, setStudents] = useState(students);
+  const { idTask } = route.params;
+  
+  const [taskData, setTaskData] = useState(null);
+  const [estudiantes, setEstudiantes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [changeCount, setChangeCount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const { globalState } = useGlobalState();
@@ -28,6 +32,7 @@ export default function TasksScreenCalification() {
     boxBackground: colorScheme === 'dark' ? '#2A4A54' : '#17A2B8',
     saveIcon: colorScheme === 'dark' ? '#FFFFFF' : '#007AFF',
     border: colorScheme === 'dark' ? '#3A5A64' : '#E0E0E0',
+    loading: colorScheme === 'dark' ? '#FFFFFF' : '#007AFF',
   }), [colorScheme]);
 
   const options = useMemo(() => ({
@@ -37,44 +42,66 @@ export default function TasksScreenCalification() {
     '4': 'Decidir'
   }), []);
 
-  const handleGradeChange = useCallback((index, newGrade) => {
-    setStudents(prevStudents => {
-      const updatedStudents = [...prevStudents];
-      updatedStudents[index].calificacion = newGrade;
-      
-      // Actualizar en allTask
-      const estudianteId = updatedStudents[index].estudianteId._id;
-      const estudianteEnTarea = allTask.estudiantes.find(
-        est => est.estudianteId.toString() === estudianteId
-      );
-      if (estudianteEnTarea) {
-        estudianteEnTarea.calificacion = newGrade;
+  // Cargar datos de la tarea y estudiantes
+  useEffect(() => {
+    const loadTaskData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getActivityByIdwithassignments(idTask);
+        
+        if (response.ok && response.task) {
+          setTaskData(response.task);
+          
+          // Transformar los assignments a el formato de estudiantes
+          const estudiantesTransformados = response.task.assignments.map(assignment => ({
+            id: assignment.student_id,
+            nombre: `${assignment.student.person.name} ${assignment.student.person.lastname} ${assignment.student.person.second_lastname || ''}`,
+            calificacion: (assignment.qualification || "0").trim(),
+            rude: assignment.student.rude
+          }));
+          
+          setEstudiantes(estudiantesTransformados);
+        } else {
+          Alert.alert('Error', 'No se pudo cargar la información de la tarea');
+        }
+      } catch (error) {
+        console.error('Error al cargar la tarea:', error);
+        Alert.alert('Error', 'Ocurrió un error al cargar la información');
+      } finally {
+        setIsLoading(false);
       }
-      
-      return updatedStudents;
+    };
+
+    loadTaskData();
+  }, [idTask]);
+
+  const handleGradeChange = useCallback((index, newGrade) => {
+    setEstudiantes(prevEstudiantes => {
+      const updatedEstudiantes = [...prevEstudiantes];
+      updatedEstudiantes[index].calificacion = newGrade.trim();
+      return updatedEstudiantes;
     });
     setChangeCount(prev => prev + 1);
-  }, [allTask.estudiantes]);
+  }, []);
 
   const saveCalificaciones = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/activities/${allTask._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...allTask,
-          estudiantes: estudiantes,
-        }),
-      });
+      // Transformar el array de estudiantes al formato requerido
+      const studentsData = estudiantes.map(estudiante => ({
+        student_id: estudiante.id,
+        qualification: estudiante.calificacion
+      }));
+
       
-      if (!response.ok) throw new Error('Error al guardar');
+      const response = await updateActivity(idTask, studentsData);
+      console.log(response);
+      if (!response.ok) throw new Error('Error al guardar'); 
       
       setChangeCount(0);
       return true;
     } catch (error) {
+      console.error('Error al guardar calificaciones:', error);
       Alert.alert(
         'Error',
         'No se pudieron guardar las calificaciones. ¿Deseas intentar nuevamente?',
@@ -128,6 +155,14 @@ export default function TasksScreenCalification() {
     return unsubscribe;
   }, [changeCount, navigation]);
 
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.loading} />
+      </ThemedView>
+    );
+  }
+
   return (
     <ParallaxScrollView
       modo={2}
@@ -149,7 +184,7 @@ export default function TasksScreenCalification() {
                 {materiaName}
               </ThemedText>
               <ThemedText type="default" style={[styles.gestionText, { color: colors.secondaryText }]}>
-                Gestión {globalState.management}
+                Gestión {globalState.management.management}
               </ThemedText>
             </View>
           </View>
@@ -166,21 +201,23 @@ export default function TasksScreenCalification() {
           </TouchableOpacity>
         </ThemedView>
 
-        <ThemedView style={[styles.box, { backgroundColor: colors.boxBackground }]}>
-          <ThemedText type="default" style={styles.description}>
-            {allTask.description}
-          </ThemedText>
-          <ThemedText type="subtitle" style={styles.tipo}>
-            Tipo: {options[allTask.tipo]}
-          </ThemedText>
-        </ThemedView>
+        {taskData && (
+          <ThemedView style={[styles.box, { backgroundColor: colors.boxBackground }]}>
+            <ThemedText type="default" style={styles.description}>
+              {taskData.description}
+            </ThemedText>
+            <ThemedText type="subtitle" style={styles.tipo}>
+              Tipo: {options[taskData.dimension_id]}
+            </ThemedText>
+          </ThemedView>
+        )}
 
         <View style={styles.studentsList}>
-          {estudiantes.map((student, index) => (
+          {estudiantes.map((estudiante, index) => (
             <InputRate
-              key={student.estudianteId._id}
-              name={student.estudianteId.name}
-              grade={student.calificacion.toString()}
+              key={estudiante.id}
+              name={estudiante.nombre}
+              grade={estudiante.calificacion}
               onGradeChange={(newGrade) => handleGradeChange(index, newGrade)}
               style={styles.studentItem}
               theme={colorScheme}
@@ -245,5 +282,10 @@ const styles = StyleSheet.create({
   },
   studentItem: {
     marginBottom: 8,
-  }
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

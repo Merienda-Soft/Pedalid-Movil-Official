@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -140,32 +140,49 @@ export default function StudentHomeScreen() {
         <View style={styles.cardsContainer}>
           {courseData.subjects.map((subject) => (
             <ThemedView key={subject.id} style={styles.cardWrapper}>
-              <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                  <Ionicons name="book-outline" size={24} color="#17A2B8" />
-                  <ThemedText type="subtitle" style={styles.subjectName}>
-                    {subject.name}
-                  </ThemedText>
-                </View>
-                
-                <View style={styles.professorInfo}>
-                  <View style={styles.professorIconContainer}>
-                    <Ionicons name="person-outline" size={11} color="#17A2B8" />
-                  </View>
-                  <View style={styles.professorTextContainer}>
-                    <ThemedText style={styles.professorLabel}>Profesor</ThemedText>
-                    <ThemedText style={styles.professorName}>
-                      {subject.professor.name} {subject.professor.lastname}
+              <TouchableOpacity 
+                onPress={() => {
+                  if (!activeManagement?.id) {
+                    Alert.alert('Error', 'No se pudo obtener la gestión activa');
+                    return;
+                  }
+                  navigation.navigate('studentTasks', {
+                    studentId: currentStudent.student.id,
+                    courseId: courseData.course.id,
+                    subjectId: subject.id,
+                    managementId: activeManagement.id,
+                    materiaName: subject.name,
+                    managementYear: activeManagement.management
+                  });
+                }}
+              >
+                <View style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <Ionicons name="book-outline" size={24} color="#17A2B8" />
+                    <ThemedText type="subtitle" style={styles.subjectName}>
+                      {subject.name}
                     </ThemedText>
                   </View>
+                  
+                  <View style={styles.professorInfo}>
+                    <View style={styles.professorIconContainer}>
+                      <Ionicons name="person-outline" size={11} color="#17A2B8" />
+                    </View>
+                    <View style={styles.professorTextContainer}>
+                      <ThemedText style={styles.professorLabel}>Profesor</ThemedText>
+                      <ThemedText style={styles.professorName}>
+                        {subject.professor.name} {subject.professor.lastname}
+                      </ThemedText>
+                    </View>
+                  </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             </ThemedView>
           ))}
         </View>
       </View>
     );
-  }, [authuser?.role, selectedStudent, studentData]);
+  }, [authuser?.role, selectedStudent, studentData, navigation, activeManagement]);
 
   if (isLoading) {
     return (

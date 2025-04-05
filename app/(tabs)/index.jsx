@@ -262,12 +262,8 @@ export default function HomeScreen() {
                           {curso.curso.name}
                         </ThemedText>
                       </View>
-                    </View>
-                    <View style={styles.courseStats}>
                       <View style={styles.statBadge}>
-                        <ThemedText style={styles.statNumber}>
-                          {curso.materias.length}
-                        </ThemedText>
+                        <ThemedText style={styles.statNumber}>{curso.materias.length}</ThemedText>
                         <ThemedText style={styles.statLabel}>Materias</ThemedText>
                       </View>
                       <AnimatedView
@@ -422,55 +418,43 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
   },
   courseHeader: {
-    padding: 20,
-    gap: 10,
+    padding: 16,
   },
   courseMainInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    gap: 12,
   },
   courseIconWrapper: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 12,
-    borderRadius: 16,
+    padding: 10,
+    borderRadius: 12,
     elevation: 2,
   },
   courseTitleContainer: {
     flex: 1,
   },
   courseTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  courseParallel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
-  },
-  courseStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
   statBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   statNumber: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: 'rgba(255, 255, 255, 0.8)',
   },
   expandIcon: {

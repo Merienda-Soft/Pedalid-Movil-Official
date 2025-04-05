@@ -71,7 +71,11 @@ export default function AuthLogin() {
 
       if (userData.success) {
         setauthUser(userData.user);
-        navigation.navigate("(tabs)");
+        if (userData.user.role === "student" || userData.user.role === "tutor") {
+          navigation.navigate("student");
+        } else {
+          navigation.navigate("(tabs)");
+        }
       } else {
         Alert.alert('Error', 'Email o contraseña incorrectos');
       }

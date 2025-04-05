@@ -21,3 +21,22 @@ export const getManagements = async () => {
     }
 };
 
+
+export const getManagementActive = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/management/active`, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error en getManagementActive:', error);
+        throw error;
+    }
+};
+

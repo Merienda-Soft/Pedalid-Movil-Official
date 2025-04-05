@@ -42,6 +42,7 @@ export default function RootLayout() {
               <Stack initialRouteName={initialRouteName}>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="student" options={{ headerShown: false }} />
+                <Stack.Screen name="studentTasks" options={{ headerShown: false }} />
                 <Stack.Screen name="auth" options={{ headerShown: false }}/>
                 <Stack.Screen name="index" options={{ headerShown: false }}/>
                 <Stack.Screen name="curso" options={{ headerShown: false }}/>

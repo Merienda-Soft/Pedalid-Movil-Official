@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { View as AnimatedView } from 'react-native-animatable';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -228,59 +230,101 @@ export default function HomeScreen() {
       );
     }
 
-    return user.asignaciones.map((curso) => {
-      const isExpanded = expandedCourseId === curso.curso._id;
-
-      return (
-        <ThemedView key={curso.curso._id} style={styles.courseCard}>
-          <TouchableOpacity 
-            onPress={() => setExpandedCourseId(isExpanded ? null : curso.curso._id)}
-            style={[
-              styles.courseHeader,
-              isExpanded && styles.courseHeaderExpanded
-            ]}
-          >
-            <View style={styles.courseInfo}>
-              <View style={styles.courseIconContainer}>
-                <Ionicons 
-                  name="school-outline" 
-                  size={20} 
-                  color="#FFFFFF" 
-                />
-              </View>
-              <ThemedText style={styles.courseTitle}>
-                {curso.curso.name} {curso.curso.parallel}
-              </ThemedText>
-            </View>
-            <Ionicons 
-              name={isExpanded ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#FFFFFF" 
-            />
-          </TouchableOpacity>
-
-          {isExpanded && (
-            <View style={styles.materiasContainer}>
-              {curso.materias.map((materia) => (
-                <TouchableOpacity 
-                  key={materia._id}
-                  style={styles.materiaCard}
-                  onPress={() => handleMateriaSelect(curso.curso, materia)}
+    return (
+      <View style={styles.coursesContainer}>
+        {user.asignaciones.map((curso) => {
+          const isExpanded = expandedCourseId === curso.curso._id;
+          
+          return (
+            <AnimatedView 
+              key={curso.curso._id} 
+              style={styles.courseWrapper}
+              animation={isExpanded ? "zoomIn" : "fadeIn"}
+              duration={300}
+            >
+              <TouchableOpacity 
+                onPress={() => setExpandedCourseId(isExpanded ? null : curso.curso._id)}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={isExpanded ? ['#149AAF', '#0D7A8C'] : ['#17A2B8', '#1590A3']}
+                  style={[styles.courseCard, isExpanded && styles.courseCardExpanded]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                 >
-                  <View style={styles.materiaIconContainer}>
-                    <Ionicons name="book-outline" size={18} color="#FFFFFF" />
+                  <View style={styles.courseHeader}>
+                    <View style={styles.courseMainInfo}>
+                      <View style={styles.courseIconWrapper}>
+                        <Ionicons name="school" size={24} color="#FFFFFF" /> 
+                      </View>
+                      <View style={styles.courseTitleContainer}>
+                        <ThemedText style={styles.courseTitle}>
+                          {curso.curso.name}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    <View style={styles.courseStats}>
+                      <View style={styles.statBadge}>
+                        <ThemedText style={styles.statNumber}>
+                          {curso.materias.length}
+                        </ThemedText>
+                        <ThemedText style={styles.statLabel}>Materias</ThemedText>
+                      </View>
+                      <AnimatedView
+                        animation={isExpanded ? "rotate" : undefined}
+                        style={styles.expandIcon}
+                      >
+                        <Ionicons 
+                          name={isExpanded ? "chevron-up-circle" : "chevron-down-circle"} 
+                          size={28} 
+                          color="#FFFFFF" 
+                        />
+                      </AnimatedView>
+                    </View>
                   </View>
-                  <ThemedText style={styles.materiaName}>
-                    {materia.name}
-                  </ThemedText>
-                  <Ionicons name="chevron-forward" size={18} color="#17A2B8" />
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </ThemedView>
-      );
-    });
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {isExpanded && (
+                <AnimatedView 
+                  animation="fadeInDown"
+                  duration={300}
+                  style={styles.materiasContainer}
+                >
+                  {curso.materias.map((materia, index) => (
+                    <TouchableOpacity 
+                      key={materia._id}
+                      style={styles.materiaCard}
+                      onPress={() => handleMateriaSelect(curso.curso, materia)}
+                      activeOpacity={0.7}
+                    >
+                      <LinearGradient
+                        colors={['#FFFFFF', '#F8FAFB']}
+                        style={styles.materiaContent}
+                      >
+                        <View style={styles.materiaIconWrapper}>
+                          <Ionicons name="book" size={22} color="#17A2B8" />
+                        </View>
+                        <ThemedText style={styles.materiaName}>
+                          {materia.name}
+                        </ThemedText>
+                        <View style={styles.materiaArrow}>
+                          <Ionicons 
+                            name="arrow-forward-circle" 
+                            size={24} 
+                            color="#17A2B8" 
+                          />
+                        </View>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  ))}
+                </AnimatedView>
+              )}
+            </AnimatedView>
+          );
+        })}
+      </View>
+    );
   }, [user?.asignaciones, expandedCourseId, handleMateriaSelect]);
 
   return (
@@ -362,69 +406,105 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
   },
+  coursesContainer: {
+    padding: 5,
+    gap: 16,
+  },
+  courseWrapper: {
+    marginBottom: 16,
+  },
   courseCard: {
-    marginHorizontal: 16,
-    marginVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    borderRadius: 20,
     overflow: 'hidden',
   },
+  courseCardExpanded: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
   courseHeader: {
+    padding: 20,
+    gap: 10,
+  },
+  courseMainInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  courseIconWrapper: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    padding: 12,
+    borderRadius: 16,
+    elevation: 2,
+  },
+  courseTitleContainer: {
+    flex: 1,
+  },
+  courseTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  courseParallel: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
+  },
+  courseStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  expandIcon: {
+    transform: [{ rotate: '0deg' }],
+  },
+  materiasContainer: {
+    backgroundColor: '#F8F9FA',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    padding: 12,
+    gap: 8,
+  },
+  materiaCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  materiaContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#17A2B8',
-    justifyContent: 'space-between',
+    gap: 16,
   },
-  courseHeaderExpanded: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  courseInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  courseIconContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 8,
-    borderRadius: 8,
-  },
-  courseTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    flex: 1,
-  },
-  materiasContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
-  },
-  materiaCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  materiaIconContainer: {
-    backgroundColor: '#17A2B8',
-    padding: 8,
-    borderRadius: 8,
+  materiaIconWrapper: {
+    backgroundColor: 'rgba(23, 162, 184, 0.1)',
+    padding: 10,
+    borderRadius: 12,
   },
   materiaName: {
     flex: 1,
-    fontSize: 14,
-    color: '#2C3E50',
+    fontSize: 16,
     fontWeight: '500',
+    color: '#2C3E50',
+  },
+  materiaArrow: {
+    opacity: 0.8,
   },
 });

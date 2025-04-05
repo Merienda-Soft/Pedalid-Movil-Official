@@ -15,7 +15,15 @@ export const getActivities = async (materiaId, cursoId, teacherId, managementId)
 }
 
 export const getActivityById = async (idActivity) => {
-  const response = await fetch(`${API_BASE_URL}/activities/${idActivity}`, {
+  const response = await fetch(`${API_BASE_URL}/tasks/${idActivity}`, {
+    method: "GET",
+  });
+
+  return await response.json();
+}
+
+export const getActivityByIdwithassignments = async (idActivity) => {
+  const response = await fetch(`${API_BASE_URL}/tasks/${idActivity}/assignments`, {
     method: "GET",
   });
 
@@ -23,7 +31,7 @@ export const getActivityById = async (idActivity) => {
 }
 
 export const createActivity = async (activityData) => {
-    const response = await fetch(`${API_BASE_URL}/activities`, {
+    const response = await fetch(`${API_BASE_URL}/tasks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -39,21 +47,21 @@ export const createActivity = async (activityData) => {
   };
 
 export const updateActivity = async (activityData) => {
-  const response = await fetch(`${API_BASE_URL}/activities/${activityData.id}`, {
+  const response = await fetch(`${API_BASE_URL}/tasks/${activityData.task.id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
 
-    body: JSON.stringify(activityData),
+    body: JSON.stringify(activityData.task),
   });
 
   return response.json();
 }
 
 export const deleteActivity = async (idActivity) => {
-  const response = await fetch(`${API_BASE_URL}/activities/${idActivity}`, {
-    method: "DELETE",
+  const response = await fetch(`${API_BASE_URL}/tasks/${idActivity}`, {
+    method: "POST",
   });
 
   return await response.json();

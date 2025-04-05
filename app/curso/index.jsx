@@ -182,7 +182,7 @@ export default function TasksScreen() {
           case 1:
             navigation.navigate('calificaciones', {
               screen: 'editTask',
-              params: { allTask: task }
+              params: { idTask: task.id }
             });
             break;
           case 2:
@@ -191,7 +191,7 @@ export default function TasksScreen() {
               `¿Deseas eliminar "${task.name}"?`,
               [
                 { text: 'No', style: 'cancel' },
-                { text: 'Sí', onPress: () => handleDeleteTask(task._id) },
+                { text: 'Sí', onPress: () => handleDeleteTask(task.id) },
               ]
             );
             break;

@@ -75,17 +75,30 @@ export default function NewTaskScreen() {
   const handleCreateTask = async () => {
     if (!validateForm()) return;
 
+    // Obtener la fecha actual para start_date
+    const today = new Date();
+    const startDate = today.toISOString();
+
+    // Convertir la fecha de entrega a formato ISO con hora final del día
+    const endDate = new Date(formData.date);
+    endDate.setHours(23, 59, 59, 999);
+    const endDateISO = endDate.toISOString();
+
     const newTask = {
-      name: formData.name,
-      description: formData.descripcion,
-      fecha: formData.date,
-      horario: "00:00",
-      ponderacion: formData.ponderacion,
-      cursoid,
-      materiaid,
-      professorid: teacherid,
-      tipo: Number(formData.tipo),
-      fecha_fin: "2024-03-20",
+      task: {
+        name: formData.name,
+        description: formData.descripcion,
+        dimension_id: Number(formData.tipo),
+        management_id: globalState.management.id, // Asumiendo que management tiene id
+        professor_id: teacherid,
+        subject_id: materiaid,
+        course_id: cursoid,
+        weight: Number(formData.ponderacion),
+        is_autoevaluation: 0,
+        quarter: "Q1",
+        start_date: startDate,
+        end_date: endDateISO
+      }
     };
 
     try {
@@ -115,6 +128,7 @@ export default function NewTaskScreen() {
         "No se pudo crear la tarea. Por favor, intenta nuevamente.",
         [{ text: "Entendido" }]
       );
+      console.log(error);
     }
   };
 
@@ -138,7 +152,7 @@ export default function NewTaskScreen() {
               {materiaName}
             </ThemedText>
             <ThemedText type="default" style={[styles.gestionText, { color: colors.secondaryText }]}>
-              Gestión {globalState.management}
+              Gestión {globalState.management.management}
             </ThemedText>
           </View>
         </View>

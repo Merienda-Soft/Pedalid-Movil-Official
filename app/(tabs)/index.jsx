@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -14,6 +14,7 @@ import { useAuth } from '../../services/AuthProvider';
 import { getTeacherByEmail } from '../../services/teacher';
 import { getManagements } from '../../services/management';
 import { handleError } from '../../utils/errorHandler';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [managements, setManagements] = useState([]);
   const [selectedManagement, setSelectedManagement] = useState(null);
+  const [expandedCourseId, setExpandedCourseId] = useState(null);
 
   // Función para cargar las gestiones
   const fetchManagements = useCallback(async () => {
@@ -226,23 +228,60 @@ export default function HomeScreen() {
       );
     }
 
-    return user.asignaciones.map((curso) => (
-      <Collapsible 
-        key={curso.curso._id} 
-        title={curso.curso.name} 
-        color="info"
-      >
-        {curso.materias.map((materia) => (
-          <CollapsibleOptions
-            key={materia._id}
-            title={materia.name}
-            color="info"
-            onPress={() => handleMateriaSelect(curso.curso, materia)}
-          />
-        ))}
-      </Collapsible>
-    ));
-  }, [user?.asignaciones, handleMateriaSelect]);
+    return user.asignaciones.map((curso) => {
+      const isExpanded = expandedCourseId === curso.curso._id;
+
+      return (
+        <ThemedView key={curso.curso._id} style={styles.courseCard}>
+          <TouchableOpacity 
+            onPress={() => setExpandedCourseId(isExpanded ? null : curso.curso._id)}
+            style={[
+              styles.courseHeader,
+              isExpanded && styles.courseHeaderExpanded
+            ]}
+          >
+            <View style={styles.courseInfo}>
+              <View style={styles.courseIconContainer}>
+                <Ionicons 
+                  name="school-outline" 
+                  size={20} 
+                  color="#FFFFFF" 
+                />
+              </View>
+              <ThemedText style={styles.courseTitle}>
+                {curso.curso.name} {curso.curso.parallel}
+              </ThemedText>
+            </View>
+            <Ionicons 
+              name={isExpanded ? "chevron-up" : "chevron-down"} 
+              size={20} 
+              color="#FFFFFF" 
+            />
+          </TouchableOpacity>
+
+          {isExpanded && (
+            <View style={styles.materiasContainer}>
+              {curso.materias.map((materia) => (
+                <TouchableOpacity 
+                  key={materia._id}
+                  style={styles.materiaCard}
+                  onPress={() => handleMateriaSelect(curso.curso, materia)}
+                >
+                  <View style={styles.materiaIconContainer}>
+                    <Ionicons name="book-outline" size={18} color="#FFFFFF" />
+                  </View>
+                  <ThemedText style={styles.materiaName}>
+                    {materia.name}
+                  </ThemedText>
+                  <Ionicons name="chevron-forward" size={18} color="#17A2B8" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </ThemedView>
+      );
+    });
+  }, [user?.asignaciones, expandedCourseId, handleMateriaSelect]);
 
   return (
     <ParallaxScrollView
@@ -311,14 +350,81 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 0,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   reactLogo: {
     height: '100%',
     width: '100%',
   },
   managementSelect: {
-    marginBottom: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  courseCard: {
+    marginHorizontal: 16,
+    marginVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    overflow: 'hidden',
+  },
+  courseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#17A2B8',
+    justifyContent: 'space-between',
+  },
+  courseHeaderExpanded: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  courseInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  courseIconContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    padding: 8,
+    borderRadius: 8,
+  },
+  courseTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  materiasContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+  },
+  materiaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  materiaIconContainer: {
+    backgroundColor: '#17A2B8',
+    padding: 8,
+    borderRadius: 8,
+  },
+  materiaName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2C3E50',
+    fontWeight: '500',
   },
 });

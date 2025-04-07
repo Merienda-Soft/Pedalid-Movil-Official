@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Image, StyleSheet, Alert, useColorScheme, View } from 'react-native';
+import { Image, StyleSheet, Alert, useColorScheme, View, TouchableOpacity } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -9,6 +9,7 @@ import { ButtonLink } from '../../components/ButtonLink';
 import { createActivity } from '../../services/activity';
 import { useGlobalState } from '../../services/UserContext';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function NewTaskScreen() {
   const colorScheme = useColorScheme();
@@ -22,7 +23,8 @@ export default function NewTaskScreen() {
     date: '',
     ponderacion: '',
     descripcion: '',
-    tipo: '1'
+    tipo: '1',
+    type: 0 // 0 = tarea para entregar, 1 = tarea solo para calificar
   });
 
   // Colores dinámicos basados en el tema
@@ -45,6 +47,13 @@ export default function NewTaskScreen() {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleCheckboxToggle = () => {
+    setFormData(prev => ({
+      ...prev,
+      type: prev.type === 0 ? 1 : 0
     }));
   };
 
@@ -96,6 +105,7 @@ export default function NewTaskScreen() {
         weight: Number(formData.ponderacion),
         is_autoevaluation: 0,
         quarter: "Q1",
+        type: formData.type,
         start_date: startDate,
         end_date: endDateISO
       }
@@ -203,6 +213,24 @@ export default function NewTaskScreen() {
         required
       />
 
+      <TouchableOpacity 
+        style={[styles.checkboxContainer, { borderColor: colors.secondaryText }]}
+        onPress={handleCheckboxToggle}
+      >
+        <View style={[
+          styles.checkbox, 
+          { borderColor: colors.secondaryText },
+          formData.type === 1 && { backgroundColor: '#17A2B8' }
+        ]}>
+          {formData.type === 1 && (
+            <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+          )}
+        </View>
+        <ThemedText style={[styles.checkboxLabel, { color: colors.text }]}>
+          Tarea solo para calificar (sin entrega de alumnos)
+        </ThemedText>
+      </TouchableOpacity>
+
       <ButtonLink 
         text="Crear Tarea" 
         modo='large' 
@@ -242,7 +270,27 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   submitButton: {
-    marginTop: 20,
-    marginBottom: 30,
+    marginTop: 5,
+    marginBottom: 10,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    paddingVertical: 0,
+    marginTop: 0,
+    gap: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    flex: 1,
   },
 });

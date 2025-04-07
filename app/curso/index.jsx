@@ -39,16 +39,16 @@ export default function TasksScreen() {
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
   ], []);
 
-  // Colores dinámicos basados en el tema
-  const colors = useMemo(() => ({
-    background: colorScheme === 'dark' ? '#1D3D47' : '#A1CEDC',
+  // Actualizar el objeto de colores para que coincida con el tema de studentTasks
+  const theme = {
+    background: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
+    surface: colorScheme === 'dark' ? '#121212' : '#FFFFFF',
+    card: colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
     text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-    secondaryText: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
-    border: colorScheme === 'dark' ? '#2A4A54' : '#E0E0E0',
-    button: colorScheme === 'dark' ? '#2A4A54' : '#FFFFFF',
-    icon: colorScheme === 'dark' ? '#FFFFFF' : '#666666',
-    loading: colorScheme === 'dark' ? '#FFFFFF' : '#17A2B8',
-  }), [colorScheme]);
+    subtext: colorScheme === 'dark' ? '#8E8E93' : '#666666',
+    border: colorScheme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.05)',
+    primary: '#17A2B8',
+  };
 
   // Validación de parámetros
   const validateParams = useCallback(() => {
@@ -225,7 +225,7 @@ export default function TasksScreen() {
     if (filteredTasks.length === 0) {
       return (
         <ThemedView style={styles.emptyContainer}>
-          <ThemedText style={[styles.emptyText, { color: colors.secondaryText }]}>
+          <ThemedText style={[styles.emptyText, { color: theme.subtext }]}>
             No hay tareas para este mes
           </ThemedText>
         </ThemedView>
@@ -246,149 +246,264 @@ export default function TasksScreen() {
         />
       );
     });
-  }, [filteredTasks, handleActionSheet, colors.secondaryText]);
+  }, [filteredTasks, handleActionSheet, theme.subtext]);
 
   // Renderizado principal
   return (
-    <ParallaxScrollView
-      modo={2}
-      headerBackgroundColor={{ light: colors.background, dark: colors.background }}
-      headerImage={
-        <Image
-          source={require('../../assets/images/task.jpg')}
-          style={styles.reactLogo}
-        />
-      }
-      refreshControl={
-        <RefreshControl 
-          refreshing={refreshing} 
-          onRefresh={onRefresh}
-          tintColor={colors.text}
-          colors={[colors.loading]}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <View style={styles.titleSection}>
-          <ThemedText type="title" style={{ color: colors.text }}>
-            Tareas
-          </ThemedText>
-          <View style={styles.subtitleRow}>
-            <ThemedText type="default" style={[styles.materiaName, { color: colors.secondaryText }]}>
-              {materiaName}
-            </ThemedText>
-            <ThemedText type="default" style={[styles.gestionText, { color: colors.secondaryText }]}>
-              Gestión {management.management}
-            </ThemedText>
-          </View>
-        </View>
-      </ThemedView>
-      
-      <InputFilter
-        value={searchValue}
-        onChangeText={setSearchValue}
-        onPress={() => {}}
-        type="search"
-        placeholder="Buscar tarea..."
-        style={styles.searchInput}
-        placeholderTextColor={colors.secondaryText}
-      />
-
-      <View style={[styles.monthNavigator, { backgroundColor: colors.border }]}>
-        <TouchableOpacity 
-          onPress={handlePrevMonth} 
-          style={[styles.monthButton, { backgroundColor: colors.button }]}
+    <View style={[styles.container, { backgroundColor: theme.surface }]}>
+      {/* ParallaxScrollView solo para la imagen */}
+      <View style={styles.headerParallax}>
+        <ParallaxScrollView
+          modo={2}
+          headerBackgroundColor={{ light: '#A1CEDC', dark: '#000000' }}
+          headerImage={
+            <Image
+              source={require('../../assets/images/task.jpg')}
+              style={styles.headerImage}
+            />
+          }
+          scrollEnabled={false}
+          headerHeight={110}
         >
-          <Ionicons name="chevron-back" size={24} color={colors.icon} />
-        </TouchableOpacity>
-        
-        <ThemedText type="subtitle" style={[styles.monthText, { color: colors.text }]}>
-          {monthNames[currentDate.getMonth()]}
-        </ThemedText>
-        
-        <TouchableOpacity 
-          onPress={handleNextMonth} 
-          style={[styles.monthButton, { backgroundColor: colors.button }]}
-        >
-          <Ionicons name="chevron-forward" size={24} color={colors.icon} />
-        </TouchableOpacity>
+          <View style={{ height: 1 }} />
+        </ParallaxScrollView>
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.loading} />
+      {/* Contenido principal */}
+      <View style={styles.mainContent}>
+        {/* Header fijo con filtros */}
+        <View style={[styles.headerFixed, { backgroundColor: theme.surface }]}>
+          <ThemedView style={[styles.titleContainer, { backgroundColor: theme.surface }]}>
+            <View style={styles.titleRow}>
+              <ThemedText type="title" style={{ color: theme.text }}>Tareas</ThemedText>
+              <ThemedText type="default" style={{ color: theme.subtext }}>
+                Gestión {management.management}
+              </ThemedText>
+            </View>
+            <ThemedText type="default" style={[styles.subtitleText, { color: theme.subtext }]}>
+              {materiaName}
+            </ThemedText>
+          </ThemedView>
+
+          <View style={[styles.filtersContainer, { backgroundColor: theme.surface }]}>
+            <InputFilter
+              value={searchValue}
+              onChangeText={setSearchValue}
+              placeholder="Buscar tarea..."
+              style={[styles.searchInput, { backgroundColor: theme.card }]}
+            />
+          </View>
+
+          <View style={[styles.monthNavigator, { backgroundColor: theme.card }]}>
+            <TouchableOpacity onPress={handlePrevMonth}>
+              <Ionicons name="chevron-back" size={24} color={theme.subtext} />
+            </TouchableOpacity>
+            <ThemedText style={[styles.monthText, { color: theme.text }]}>
+              {monthNames[currentDate.getMonth()]}
+            </ThemedText>
+            <TouchableOpacity onPress={handleNextMonth}>
+              <Ionicons name="chevron-forward" size={24} color={theme.subtext} />
+            </TouchableOpacity>
+          </View>
         </View>
-      ) : (
-        renderTasks
-      )}
-    </ParallaxScrollView>
+
+        {/* Contenido scrolleable */}
+        <ScrollView 
+          style={styles.scrollContent}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              tintColor={theme.text}
+              colors={[theme.primary]}
+            />
+          }
+        >
+          {isLoading ? (
+            <ActivityIndicator size="large" color={theme.primary} style={styles.loader} />
+          ) : filteredTasks.length === 0 ? (
+            <ThemedView style={[styles.emptyContainer, { backgroundColor: theme.surface }]}>
+              <ThemedText style={[styles.emptyText, { color: theme.subtext }]}>
+                No hay tareas para este mes
+              </ThemedText>
+            </ThemedView>
+          ) : (
+            <View style={[styles.tasksContainer, { backgroundColor: theme.surface }]}>
+              {filteredTasks.map((task) => (
+                <TouchableOpacity 
+                  key={task.id}
+                  style={[styles.taskCard, { backgroundColor: theme.card }]}
+                  onPress={() => handleActionSheet(task)}
+                >
+                  <View style={styles.taskContent}>
+                    <View style={styles.taskHeader}>
+                      <View style={styles.taskTitleContainer}>
+                        <ThemedText style={[styles.taskName, { color: theme.text }]}>
+                          {task.name}
+                        </ThemedText>
+                        <ThemedText style={[styles.taskDate, { color: theme.subtext }]}>
+                          {task.createDate.toLocaleDateString()}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.weightBadge}>
+                        <ThemedText style={styles.weightText}>
+                          {task.weight}%
+                        </ThemedText>
+                      </View>
+                    </View>
+                    
+                    <View style={[styles.taskDetails, { borderTopColor: theme.border }]}>
+                      <View style={styles.detailItem}>
+                        <Ionicons name="school-outline" size={16} color={theme.subtext} />
+                        <ThemedText style={[styles.detailText, { color: theme.subtext }]}>
+                          {task.dimension.dimension}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  headerParallax: {
+    height: 110,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  mainContent: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  headerFixed: {
+    width: '100%',
+    zIndex: 2,
+    marginTop: 110,
+  },
   titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingHorizontal: 0,
+    padding: 16,
+    paddingBottom: 8,
   },
-  titleSection: {
-  },
-  subtitleRow: {
+  titleRow: {
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
   },
-  materiaName: {
-    fontSize: 16,
+  subtitleText: {
+    marginTop: 4,
   },
-  gestionText: {
-    fontSize: 16,
-    marginLeft: 8,
+  filtersContainer: {
+    padding: 16,
+    paddingTop: 8,
+  },
+  scrollContent: {
+    flex: 1,
   },
   searchInput: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 0,
   },
   monthNavigator: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    padding: 16,
+    marginHorizontal: 16,
     borderRadius: 12,
-    paddingVertical: 8,
-  },
-  monthButton: {
-    padding: 8,
-    borderRadius: 8,
+    marginBottom: 8,
   },
   monthText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
-  loadingContainer: {
+  tasksContainer: {
+    padding: 16,
+    gap: 12,
+  },
+  taskCard: {
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  taskContent: {
+    padding: 16,
+    gap: 12,
+  },
+  taskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  taskTitleContainer: {
     flex: 1,
-    justifyContent: 'center',
+    gap: 4,
+  },
+  taskName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  taskDate: {
+    fontSize: 12,
+  },
+  weightBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#17A2B8',
+  },
+  weightText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  taskDetails: {
+    flexDirection: 'row',
+    paddingTop: 8,
+    borderTopWidth: 1,
+  },
+  detailItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    gap: 4,
+  },
+  detailText: {
+    fontSize: 12,
+  },
+  loader: {
+    marginTop: 20,
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
+    alignItems: 'center',
   },
   emptyText: {
     fontSize: 16,
-    textAlign: 'center',
   },
   taskButton: {
     marginVertical: 4,
     marginHorizontal: 16,
-  },
-  reactLogo: {
-    height: '100%',
-    width: '100%',
   },
 });

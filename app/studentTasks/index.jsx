@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerParallax: {
-    height: 150, // Altura fija para la imagen parallax
+    height: 110, // Altura fija para la imagen parallax
     position: 'absolute',
     top: 0,
     left: 0,
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   headerFixed: {
     width: '100%',
     zIndex: 2,
-    marginTop: 150, // Mismo valor que headerParallax height
+    marginTop: 110, // Mismo valor que headerParallax height
   },
   titleContainer: {
     padding: 16,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 10,
     marginRight: 8,
   },
   filterText: {

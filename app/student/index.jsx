@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, useColorScheme } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -24,6 +24,17 @@ export default function StudentHomeScreen() {
   const [activeManagement, setActiveManagement] = useState(null);
   const [studentData, setStudentData] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const colorScheme = useColorScheme();
+
+  const theme = {
+    background: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
+    surface: colorScheme === 'dark' ? '#121212' : '#FFFFFF',
+    card: colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
+    text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+    subtext: colorScheme === 'dark' ? '#8E8E93' : '#666666',
+    border: colorScheme === 'dark' ? '#2C2C2E' : 'rgba(23, 162, 184, 0.1)',
+    primary: '#17A2B8',
+  };
 
   const fetchActiveManagement = useCallback(async () => {
     try {
@@ -119,8 +130,8 @@ export default function StudentHomeScreen() {
     
     if (!currentStudent?.courses?.length) {
       return (
-        <ThemedView style={styles.emptyContainer}>
-          <ThemedText style={styles.emptyText}>
+        <ThemedView style={[styles.emptyContainer, { backgroundColor: theme.surface }]}>
+          <ThemedText style={[styles.emptyText, { color: theme.subtext }]}>
             No hay cursos asignados
           </ThemedText>
         </ThemedView>
@@ -130,7 +141,7 @@ export default function StudentHomeScreen() {
     const courseData = currentStudent.courses[0];
 
     return (
-      <View style={styles.courseContainer}>
+      <View style={[styles.courseContainer, { backgroundColor: theme.surface }]}>
         <ThemedView style={styles.courseHeader}>
           <ThemedText type="subtitle" style={styles.courseTitle}>
             {courseData.course.course}
@@ -156,21 +167,21 @@ export default function StudentHomeScreen() {
                   });
                 }}
               >
-                <View style={styles.card}>
+                <View style={[styles.card, { backgroundColor: theme.card }]}>
                   <View style={styles.cardHeader}>
-                    <Ionicons name="book-outline" size={24} color="#17A2B8" />
-                    <ThemedText type="subtitle" style={styles.subjectName}>
+                    <Ionicons name="book-outline" size={24} color={theme.primary} />
+                    <ThemedText type="subtitle" style={[styles.subjectName, { color: theme.text }]}>
                       {subject.name}
                     </ThemedText>
                   </View>
                   
-                  <View style={styles.professorInfo}>
-                    <View style={styles.professorIconContainer}>
-                      <Ionicons name="person-outline" size={11} color="#17A2B8" />
+                  <View style={[styles.professorInfo, { borderTopColor: theme.border }]}>
+                    <View style={[styles.professorIconContainer, { backgroundColor: 'rgba(23, 162, 184, 0.1)' }]}>
+                      <Ionicons name="person-outline" size={11} color={theme.primary} />
                     </View>
                     <View style={styles.professorTextContainer}>
-                      <ThemedText style={styles.professorLabel}>Profesor</ThemedText>
-                      <ThemedText style={styles.professorName}>
+                      <ThemedText style={[styles.professorLabel, { color: theme.primary }]}>Profesor</ThemedText>
+                      <ThemedText style={[styles.professorName, { color: theme.text }]}>
                         {subject.professor.name} {subject.professor.lastname}
                       </ThemedText>
                     </View>
@@ -182,7 +193,7 @@ export default function StudentHomeScreen() {
         </View>
       </View>
     );
-  }, [authuser?.role, selectedStudent, studentData, navigation, activeManagement]);
+  }, [authuser?.role, selectedStudent, studentData, navigation, activeManagement, theme]);
 
   if (isLoading) {
     return (
@@ -195,7 +206,7 @@ export default function StudentHomeScreen() {
   return (
     <ParallaxScrollView
       modo={2}
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerBackgroundColor={{ light: '#A1CEDC', dark: '#000000' }}
       headerImage={
         <Image
           source={require('../../assets/images/cursos.jpg')}
@@ -208,29 +219,30 @@ export default function StudentHomeScreen() {
           onRefresh={onRefresh}
         />
       }
+      style={{ backgroundColor: theme.surface }}
     >
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Cursos</ThemedText>
-        <ThemedText type="default">
+      <ThemedView style={[styles.titleContainer, { backgroundColor: theme.surface }]}>
+        <ThemedText type="title" style={{ color: theme.text }}>Cursos</ThemedText>
+        <ThemedText type="default" style={{ color: theme.subtext }}>
           Gestión {activeManagement?.management}
         </ThemedText>
       </ThemedView>
 
       {authuser?.role === 'tutor' && studentData && (
-        <ThemedView>
+        <ThemedView style={{ backgroundColor: theme.surface }}>
           <InputComboBox
             label="Seleccionar Estudiante"
             selectedValue={selectedStudent?.student?.id}
             onValueChange={handleStudentChange}
             options={studentOptions}
-            style={styles.managementSelect}
+            style={[styles.managementSelect, { backgroundColor: theme.card }]}
           />
         </ThemedView>
       )}
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#17A2B8" />
+        <View style={[styles.loadingContainer, { backgroundColor: theme.surface }]}>
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : (
         renderCursos
@@ -247,7 +259,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 10,
   },
   emptyContainer: {
     flex: 1,
@@ -275,7 +287,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   courseContainer: {
-    padding: 16,
+    padding: 0,
   },
   courseHeader: {
     marginBottom: 16,
@@ -309,7 +321,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 10,
     padding: 11,
     elevation: 4,
     shadowColor: '#000',

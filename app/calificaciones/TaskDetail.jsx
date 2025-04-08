@@ -43,13 +43,11 @@ export default function TaskDetailScreen() {
   const fetchTaskDetails = async () => {
     try {
       const response = await getTaskByIdwithassignments(taskId, studentId);
-      console.log("aqui", response);
       if (response.ok && response.data) {
         setTask(response.data);
         const assignment = response.data.assignments?.[0];
         if (assignment && assignment.files) {
           setSubmittedFiles(assignment.files);
-          console.log("Archivos enviados:", assignment.files);
         }
       } else {
         handleError(new Error('No se pudo cargar la tarea'));
@@ -177,7 +175,6 @@ export default function TaskDetailScreen() {
           // Crear referencia y eliminar
           const fileRef = ref(storage, decodedPath);
           await deleteObject(fileRef);
-          console.log(`Archivo eliminado: ${file.name}`);
         } catch (fileError) {
           console.error(`Error al eliminar archivo ${file.name}:`, fileError);
           // Continuamos con el resto de los archivos incluso si uno falla

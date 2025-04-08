@@ -39,6 +39,14 @@ export const getTasksByStudentId = async (studentId, courseId, subjectId, manage
   return await response.json();
 }
 
+export const getTaskByIdwithassignments = async (taskId, studentId) => {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/student/${studentId}`, {
+    method: "GET",
+  });
+
+  return await response.json();
+}
+
 export const createActivity = async (activityData) => {
     const response = await fetch(`${API_BASE_URL}/tasks`, {
       method: "POST",

@@ -86,6 +86,7 @@ export default function TasksScreen() {
         subject: task.subject.subject,
         dimension: task.dimension.dimension,
         assignments: task.assignments,
+        type: task.type,
       }));
       setTasks(transformedTasks);
     } catch (error) {
@@ -233,10 +234,10 @@ export default function TasksScreen() {
       let matchesFilter = true;
       switch (taskFilter) {
         case 'ACTIVE':
-          matchesFilter = task.end_date > now;
+          matchesFilter = task.end_date > now && task.type !== 1;
           break;
         case 'TO_REVIEW':
-          matchesFilter = task.end_date <= now;
+          matchesFilter = task.end_date <= now || task.type === 1;
           break;
         default: // 'ALL'
           matchesFilter = true;
@@ -246,7 +247,7 @@ export default function TasksScreen() {
     });
   }, [tasks, searchValue, currentDate, taskFilter]);
 
-  // Agregar esta función para contar tareas por tipo de filtro
+  // Modificar la función de conteo
   const getTaskCountByFilter = useCallback((filterKey) => {
     const now = new Date();
     return tasks.filter(task => {
@@ -258,9 +259,9 @@ export default function TasksScreen() {
 
       switch (filterKey) {
         case 'ACTIVE':
-          return task.end_date > now;
+          return task.end_date > now && task.type !== 1;
         case 'TO_REVIEW':
-          return task.end_date <= now;
+          return task.end_date <= now || task.type === 1;
         default: // 'ALL'
           return true;
       }
@@ -401,7 +402,10 @@ export default function TasksScreen() {
                           <View style={styles.statusIndicatorContainer}>
                             <View style={[
                               styles.statusIndicator, 
-                              { backgroundColor: task.end_date > new Date() ? '#4CAF50' : '#FF5252' }
+                              { 
+                                backgroundColor: task.type === 1 ? '#9C27B0' : // Morado para type 1
+                                  task.end_date > new Date() ? '#4CAF50' : '#FF5252' 
+                              }
                             ]} />
                             <ThemedText style={[styles.taskName, { color: theme.text }]}>
                               {task.name}
@@ -415,12 +419,14 @@ export default function TasksScreen() {
                               Creada: {task.createDate.toLocaleDateString()}
                             </ThemedText>
                           </View>
-                          <View style={styles.dateItem}>
-                            <Ionicons name="time-outline" size={14} color={theme.subtext} />
-                            <ThemedText style={[styles.taskDate, { color: theme.subtext }]}>
-                              Entrega: {task.end_date.toLocaleDateString()}
-                            </ThemedText>
-                          </View>
+                          {task.type !== 1 && (
+                            <View style={styles.dateItem}>
+                              <Ionicons name="time-outline" size={14} color={theme.subtext} />
+                              <ThemedText style={[styles.taskDate, { color: theme.subtext }]}>
+                                Entrega: {task.end_date.toLocaleDateString()}
+                              </ThemedText>
+                            </View>
+                          )}
                         </View>
                       </View>
                       <View style={styles.taskMetadata}>

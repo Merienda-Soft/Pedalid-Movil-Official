@@ -4,10 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { useRoute } from '@react-navigation/native';
-import { getTaskByIdwithassignments } from '../../services/activity';
+import { getTaskByIdwithassignments, submitTaskFiles, cancelSubmitTaskFiles } from '../../services/activity';
 import { handleError } from '../../utils/errorHandler';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import * as DocumentPicker from 'expo-document-picker';
+import { storage } from '../../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function TaskDetailScreen() {
   const colorScheme = useColorScheme();
@@ -15,6 +17,8 @@ export default function TaskDetailScreen() {
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   const { studentId, taskId } = route.params;
 
@@ -38,6 +42,7 @@ export default function TaskDetailScreen() {
   const fetchTaskDetails = async () => {
     try {
       const response = await getTaskByIdwithassignments(taskId, studentId);
+      console.log("aqui",response);
       if (response.ok && response.data) {
         setTask(response.data);
       } else {
@@ -89,9 +94,82 @@ export default function TaskDetailScreen() {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
-  const handleSubmit = () => {
-    // Aquí implementaremos el envío de la tarea
-    console.log('Enviar tarea');
+  const uploadFileToFirebase = async (file) => {
+    try {
+      // Crear una referencia única para el archivo
+      const fileName = `tasks/${taskId}/${studentId}/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, fileName);
+
+      // Obtener el blob del archivo
+      const response = await fetch(file.uri);
+      const blob = await response.blob();
+
+      // Subir el archivo
+      await uploadBytes(storageRef, blob);
+
+      // Obtener la URL de descarga
+      const downloadURL = await getDownloadURL(storageRef);
+
+      return {
+        name: file.name,
+        url: downloadURL
+      };
+    } catch (error) {
+      throw new Error(`Error al subir archivo: ${error.message}`);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setIsUploading(true);
+      setUploadProgress(0);
+
+      // 1. Subir archivos a Firebase
+      const totalFiles = selectedFiles.length;
+      const uploadedFiles = [];
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const uploadedFile = await uploadFileToFirebase(file);
+        uploadedFiles.push(uploadedFile);
+        
+        // Actualizar progreso
+        setUploadProgress(((i + 1) / totalFiles) * 100);
+      }
+
+      // 2. Enviar información a tu API
+      const response = await submitTaskFiles(taskId, studentId, uploadedFiles);
+      
+      if (response.ok) {
+        // 3. Actualizar el estado de la tarea
+        await fetchTaskDetails();
+        
+        // 4. Limpiar el estado
+        setSelectedFiles([]);
+        setUploadProgress(0);
+      } else {
+        throw new Error('Error al enviar la tarea');
+      }
+
+    } catch (error) {
+      handleError(error, 'Error al enviar la tarea');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleCancelSubmit = async () => {
+    try {
+      const response = await cancelSubmitTaskFiles(taskId, studentId);
+      if (response.ok) {
+        // Actualizar el estado de la tarea después de cancelar el envío
+        await fetchTaskDetails();
+      } else {
+        throw new Error('Error al cancelar el envío de la tarea');
+      }
+    } catch (error) {
+      handleError(error, 'Error al cancelar el envío de la tarea');
+    }
   };
 
   if (loading) {
@@ -180,7 +258,22 @@ export default function TaskDetailScreen() {
             <View style={[styles.card, { backgroundColor: theme.card }]}>
               <ThemedText style={styles.sectionTitle}>Entrega de tarea</ThemedText>
               
-              {!isSubmitted ? (
+              {isSubmitted ? (
+                <View style={styles.submittedContainer}>
+                  <Ionicons name="checkmark-circle" size={24} color={theme.success} />
+                  <ThemedText style={[styles.submittedText, { color: theme.success }]}>
+                    Tarea entregada
+                  </ThemedText>
+                  <TouchableOpacity 
+                    style={[styles.cancelButton, { backgroundColor: theme.error }]}
+                    onPress={handleCancelSubmit}
+                  >
+                    <ThemedText style={styles.cancelButtonText}>
+                      Cancelar Envío
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+              ) : (
                 <>
                   <TouchableOpacity 
                     style={[styles.fileButton, { borderColor: theme.border }]}
@@ -241,24 +334,26 @@ export default function TaskDetailScreen() {
                       styles.submitButton, 
                       { 
                         backgroundColor: selectedFiles.length > 0 ? theme.primary : theme.border,
-                        opacity: selectedFiles.length > 0 ? 1 : 0.5 
+                        opacity: isUploading ? 0.7 : selectedFiles.length > 0 ? 1 : 0.5 
                       }
                     ]}
                     onPress={handleSubmit}
-                    disabled={selectedFiles.length === 0}
+                    disabled={selectedFiles.length === 0 || isUploading}
                   >
-                    <ThemedText style={styles.submitButtonText}>
-                      Enviar tarea
-                    </ThemedText>
+                    {isUploading ? (
+                      <View style={styles.uploadingContainer}>
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <ThemedText style={styles.submitButtonText}>
+                          Subiendo... {Math.round(uploadProgress)}%
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <ThemedText style={styles.submitButtonText}>
+                        Enviar tarea
+                      </ThemedText>
+                    )}
                   </TouchableOpacity>
                 </>
-              ) : (
-                <View style={styles.submittedContainer}>
-                  <Ionicons name="checkmark-circle" size={24} color={theme.success} />
-                  <ThemedText style={[styles.submittedText, { color: theme.success }]}>
-                    Tarea entregada
-                  </ThemedText>
-                </View>
               )}
             </View>
           </View>
@@ -427,5 +522,21 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     padding: 4,
+  },
+  uploadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cancelButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 

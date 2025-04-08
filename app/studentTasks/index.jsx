@@ -79,12 +79,6 @@ export default function StudentTasksScreen() {
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
     try {
-      console.log("Fetching tasks with params:", {
-        studentId,
-        courseId,
-        subjectId,
-        managementId,
-      });
 
       const response = await getTasksByStudentId(
         studentId,
@@ -92,7 +86,6 @@ export default function StudentTasksScreen() {
         subjectId,
         managementId
       );
-      console.log("API Response:", response);
 
       if (response.ok && response.data) {
         const transformedTasks = response.data.map((task) => ({
@@ -100,7 +93,6 @@ export default function StudentTasksScreen() {
           createDate: new Date(task.create_date),
           status: task.assignments?.[0]?.status ?? 0,
         }));
-        console.log("Transformed tasks:", transformedTasks);
         setTasks(transformedTasks);
       } else {
         console.log("No tasks found or invalid response");
@@ -117,7 +109,7 @@ export default function StudentTasksScreen() {
 
   useEffect(() => {
     if (studentId && courseId && subjectId && managementId) {
-      console.log("Initial fetch triggered");
+      
       fetchTasks();
     }
   }, [studentId, courseId, subjectId, managementId]);
@@ -125,7 +117,7 @@ export default function StudentTasksScreen() {
   useFocusEffect(
     useCallback(() => {
       if (studentId && courseId && subjectId && managementId) {
-        console.log("Focus effect fetch triggered");
+        
         fetchTasks();
       }
     }, [fetchTasks])
@@ -136,7 +128,7 @@ export default function StudentTasksScreen() {
     setCurrentDate((prev) => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() - 1);
-      console.log("New date after prev:", newDate);
+      
       return newDate;
     });
   }, []);
@@ -145,7 +137,7 @@ export default function StudentTasksScreen() {
     setCurrentDate((prev) => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() + 1);
-      console.log("New date after next:", newDate);
+      
       return newDate;
     });
   }, []);

@@ -76,9 +76,46 @@ export const updateActivity = async (activityId, studentsData) => {
 };
 
 export const deleteActivity = async (idActivity) => {
-  const response = await fetch(`${API_BASE_URL}/tasks/${idActivity}`, {
+  const response = await fetch(`${API_BASE_URL}/tasks/delete/${idActivity}`, {
     method: "POST",
   });
 
   return await response.json();
 }
+
+export const submitTaskFiles = async (taskId, studentId, files) => {
+  const response = await fetch(`${API_BASE_URL}/tasks/submit`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      taskId,
+      studentId,
+      files
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error submitting task: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+export const cancelSubmitTaskFiles = async (taskId, studentId) => { 
+  const response = await fetch(`${API_BASE_URL}/tasks/cancel-submit`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      taskId,
+      studentId
+    })
+  });
+    
+
+  return await response.json();
+}
+

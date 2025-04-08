@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, useColorScheme, TouchableOpacity, ActivityIndicator, Image, ScrollView } from 'react-native';
+import { View, StyleSheet, useColorScheme, TouchableOpacity, ActivityIndicator, Image, ScrollView, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
@@ -9,7 +9,7 @@ import { handleError } from '../../utils/errorHandler';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import * as DocumentPicker from 'expo-document-picker';
 import { storage } from '../../config/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 export default function TaskDetailScreen() {
   const colorScheme = useColorScheme();
@@ -19,6 +19,7 @@ export default function TaskDetailScreen() {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [submittedFiles, setSubmittedFiles] = useState([]);
   
   const { studentId, taskId } = route.params;
 
@@ -42,9 +43,14 @@ export default function TaskDetailScreen() {
   const fetchTaskDetails = async () => {
     try {
       const response = await getTaskByIdwithassignments(taskId, studentId);
-      console.log("aqui",response);
+      console.log("aqui", response);
       if (response.ok && response.data) {
         setTask(response.data);
+        const assignment = response.data.assignments?.[0];
+        if (assignment && assignment.files) {
+          setSubmittedFiles(assignment.files);
+          console.log("Archivos enviados:", assignment.files);
+        }
       } else {
         handleError(new Error('No se pudo cargar la tarea'));
       }
@@ -160,15 +166,48 @@ export default function TaskDetailScreen() {
 
   const handleCancelSubmit = async () => {
     try {
+      // 1. Primero eliminamos los archivos de Firebase Storage
+      for (const file of submittedFiles) {
+        try {
+          // Extraer el path del archivo de la URL de Firebase
+          const url = new URL(file.url);
+          const pathWithToken = url.pathname.split('/o/')[1];
+          const decodedPath = decodeURIComponent(pathWithToken.split('?')[0]);
+          
+          // Crear referencia y eliminar
+          const fileRef = ref(storage, decodedPath);
+          await deleteObject(fileRef);
+          console.log(`Archivo eliminado: ${file.name}`);
+        } catch (fileError) {
+          console.error(`Error al eliminar archivo ${file.name}:`, fileError);
+          // Continuamos con el resto de los archivos incluso si uno falla
+        }
+      }
+
+      // 2. Cancelar el envío en el backend
       const response = await cancelSubmitTaskFiles(taskId, studentId);
       if (response.ok) {
-        // Actualizar el estado de la tarea después de cancelar el envío
+        // 3. Actualizar el estado de la tarea
         await fetchTaskDetails();
       } else {
         throw new Error('Error al cancelar el envío de la tarea');
       }
     } catch (error) {
       handleError(error, 'Error al cancelar el envío de la tarea');
+    }
+  };
+
+  const handleOpenFile = async (fileUrl) => {
+    try {
+      const supported = await Linking.canOpenURL(fileUrl);
+      
+      if (supported) {
+        await Linking.openURL(fileUrl);
+      } else {
+        handleError(new Error(`No se puede abrir la URL: ${fileUrl}`));
+      }
+    } catch (error) {
+      handleError(error, 'Error al abrir el archivo');
     }
   };
 
@@ -260,10 +299,68 @@ export default function TaskDetailScreen() {
               
               {isSubmitted ? (
                 <View style={styles.submittedContainer}>
-                  <Ionicons name="checkmark-circle" size={24} color={theme.success} />
-                  <ThemedText style={[styles.submittedText, { color: theme.success }]}>
-                    Tarea entregada
-                  </ThemedText>
+                  <View style={styles.statusRow}>
+                    <Ionicons name="checkmark-circle" size={24} color={theme.success} />
+                    <ThemedText style={[styles.submittedText, { color: theme.success }]}>
+                      Tarea entregada
+                    </ThemedText>
+                  </View>
+                  
+                  <View style={[styles.filesListContainer, { 
+                    backgroundColor: theme.surface === '#121212' ? '#1A1A1A' : '#F5F5F5',
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    marginVertical: 16,
+                    borderRadius: 8,
+                    padding: 8
+                  }]}>
+                    <ThemedText style={[styles.sectionSubtitle, { marginBottom: 8 }]}>
+                      Archivos enviados:
+                    </ThemedText>
+                    {submittedFiles.length > 0 ? (
+                      submittedFiles.map((file, index) => (
+                        <TouchableOpacity 
+                          key={file.url} 
+                          style={[styles.fileItem, { 
+                            backgroundColor: theme.surface === '#121212' ? '#2C2C2E' : '#FFFFFF',
+                            marginBottom: 8,
+                            borderRadius: 8
+                          }]}
+                          onPress={() => handleOpenFile(file.url)}
+                        >
+                          <View style={styles.fileInfo}>
+                            <Ionicons 
+                              name="document-outline"
+                              size={24} 
+                              color={theme.primary} 
+                            />
+                            <View style={styles.fileDetails}>
+                              <ThemedText 
+                                style={[styles.fileName, { 
+                                  color: theme.text,
+                                  fontWeight: '500'
+                                }]} 
+                                numberOfLines={1}
+                              >
+                                {file.name}
+                              </ThemedText>
+                            </View>
+                          </View>
+                          <Ionicons 
+                            name="open-outline" 
+                            size={20} 
+                            color={theme.primary} 
+                            style={{ marginRight: 8 }}
+                          />
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <ThemedText style={[styles.submittedText, { color: theme.subtext }]}>
+                        No hay archivos enviados.
+                      </ThemedText>
+                    )}
+                  </View>
+                  
                   <TouchableOpacity 
                     style={[styles.cancelButton, { backgroundColor: theme.error }]}
                     onPress={handleCancelSubmit}
@@ -481,11 +578,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   submittedContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    padding: 16,
+    padding: 0,
   },
   submittedText: {
     fontSize: 16,
@@ -536,6 +633,20 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  filesListContainer: {
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  sectionSubtitle: {
     fontSize: 16,
     fontWeight: '600',
   },

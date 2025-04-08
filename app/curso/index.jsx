@@ -12,6 +12,13 @@ import { useActionSheet } from '@expo/react-native-action-sheet';
 import { deleteActivity, getActivities } from '../../services/activity';
 import { handleError } from '../../utils/errorHandler';
 
+// Agregar constante para los tipos de filtro al inicio del archivo
+const TASK_FILTERS = {
+  ALL: 'Todas',
+  ACTIVE: 'Creadas',
+  TO_REVIEW: 'Para Revisar'
+};
+
 export default function TasksScreen() {
   const colorScheme = useColorScheme();
   const { showActionSheetWithOptions } = useActionSheet();
@@ -24,7 +31,7 @@ export default function TasksScreen() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Parámetros de ruta
   const { materiaid, cursoid, teacherid, materiaName, management } = route.params
   
@@ -50,6 +57,9 @@ export default function TasksScreen() {
     primary: '#17A2B8',
   };
 
+  // Agregar estado para el filtro de tareas
+  const [taskFilter, setTaskFilter] = useState('ALL');
+
   // Validación de parámetros
   const validateParams = useCallback(() => {
     if (!materiaid || !cursoid || !teacherid) {
@@ -66,13 +76,13 @@ export default function TasksScreen() {
     setIsLoading(true);
     try {
       const taskData = await getActivities(materiaid, cursoid, teacherid, management.id);
-      // Transformar los datos de las tareas al formato necesario
       const transformedTasks = taskData.map(task => ({
         id: task.id,
         name: task.name,
         description: task.description,
         weight: task.weight,
         createDate: new Date(task.create_date),
+        end_date: new Date(task.end_date),
         subject: task.subject.subject,
         dimension: task.dimension.dimension,
         assignments: task.assignments,
@@ -121,7 +131,7 @@ export default function TasksScreen() {
         // Si estamos en enero, ir a diciembre del mismo año de gestión
         newDate.setMonth(11);
       } else {
-        newDate.setMonth(prev.getMonth() - 1);
+      newDate.setMonth(prev.getMonth() - 1);
       }
       return newDate;
     });
@@ -134,7 +144,7 @@ export default function TasksScreen() {
         // Si estamos en diciembre, ir a enero del mismo año de gestión
         newDate.setMonth(0);
       } else {
-        newDate.setMonth(prev.getMonth() + 1);
+      newDate.setMonth(prev.getMonth() + 1);
       }
       return newDate;
     });
@@ -142,11 +152,11 @@ export default function TasksScreen() {
 
   const handleDeleteTask = useCallback(async (taskid) => {
     try {
-      const response = await deleteActivity(taskid);
-      if (!response.ok) {
-        Alert.alert('Error', 'No se pudo eliminar la tarea.');
-        return;
-      }
+    const response = await deleteActivity(taskid);
+    if (!response.ok) {
+      Alert.alert('Error', 'No se pudo eliminar la tarea.');
+      return;
+    }
 
       navigation.replace("curso", {
         screen: 'index',
@@ -186,10 +196,10 @@ export default function TasksScreen() {
             });
             break;
           case 2:
-            Alert.alert(
+          Alert.alert(
               'Eliminación',
-              `¿Deseas eliminar "${task.name}"?`,
-              [
+            `¿Deseas eliminar "${task.name}"?`,
+            [
                 { text: 'No', style: 'cancel' },
                 { text: 'Sí', onPress: () => handleDeleteTask(task.id) },
               ]
@@ -209,56 +219,68 @@ export default function TasksScreen() {
     }
   }, [fetchTasks]);
 
-  // Filtrado de tareas
+  // Modificar el filtrado de tareas
   const filteredTasks = useMemo(() => {
+    const now = new Date();
+    
     return tasks.filter(task => {
       const taskCreateDate = new Date(task.createDate);
       const matchesSearch = task.name.toLowerCase().includes(searchValue.toLowerCase());
       const matchesMonth = taskCreateDate.getMonth() === currentDate.getMonth() && 
-                           taskCreateDate.getFullYear() === currentDate.getFullYear();
-      return matchesSearch && matchesMonth;
+                         taskCreateDate.getFullYear() === currentDate.getFullYear();
+
+      // Aplicar filtros de estado
+      let matchesFilter = true;
+      switch (taskFilter) {
+        case 'ACTIVE':
+          matchesFilter = task.end_date > now;
+          break;
+        case 'TO_REVIEW':
+          matchesFilter = task.end_date <= now;
+          break;
+        default: // 'ALL'
+          matchesFilter = true;
+      }
+
+      return matchesSearch && matchesMonth && matchesFilter;
     });
-  }, [tasks, searchValue, currentDate]);
+  }, [tasks, searchValue, currentDate, taskFilter]);
+
+  // Agregar esta función para contar tareas por tipo de filtro
+  const getTaskCountByFilter = useCallback((filterKey) => {
+    const now = new Date();
+    return tasks.filter(task => {
+      const taskCreateDate = new Date(task.createDate);
+      const matchesMonth = taskCreateDate.getMonth() === currentDate.getMonth() && 
+                          taskCreateDate.getFullYear() === currentDate.getFullYear();
+      
+      if (!matchesMonth) return false;
+
+      switch (filterKey) {
+        case 'ACTIVE':
+          return task.end_date > now;
+        case 'TO_REVIEW':
+          return task.end_date <= now;
+        default: // 'ALL'
+          return true;
+      }
+    }).length;
+  }, [tasks, currentDate]);
 
   // Renderizado de tareas
-  const renderTasks = useMemo(() => {
-    if (filteredTasks.length === 0) {
-      return (
-        <ThemedView style={styles.emptyContainer}>
-          <ThemedText style={[styles.emptyText, { color: theme.subtext }]}>
-            No hay tareas para este mes
-          </ThemedText>
-        </ThemedView>
-      );
-    }
-
-    return filteredTasks.map((task) => {
-      const formattedCreateDate = `${task.createDate.getUTCFullYear()}/${String(task.createDate.getUTCMonth() + 1).padStart(2, '0')}/${String(task.createDate.getUTCDate()).padStart(2, '0')}`;
-
-      return (
-        <ButtonLink
-          key={task.id}
-          text={`${formattedCreateDate}     ${task.name}     ponderación ${task.weight}%`}
-          modo="large"
-          onPress={() => handleActionSheet(task)}
-          color="secondary"
-          style={styles.taskButton}
-        />
-      );
-    });
-  }, [filteredTasks, handleActionSheet, theme.subtext]);
+  
 
   // Renderizado principal
   return (
     <View style={[styles.container, { backgroundColor: theme.surface }]}>
       {/* ParallaxScrollView solo para la imagen */}
       <View style={styles.headerParallax}>
-        <ParallaxScrollView
-          modo={2}
+    <ParallaxScrollView
+      modo={2}
           headerBackgroundColor={{ light: '#A1CEDC', dark: '#000000' }}
-          headerImage={
-            <Image
-              source={require('../../assets/images/task.jpg')}
+      headerImage={
+        <Image
+          source={require('../../assets/images/task.jpg')}
               style={styles.headerImage}
             />
           }
@@ -283,27 +305,64 @@ export default function TasksScreen() {
             <ThemedText type="default" style={[styles.subtitleText, { color: theme.subtext }]}>
               {materiaName}
             </ThemedText>
-          </ThemedView>
-
+      </ThemedView>
+      
           <View style={[styles.filtersContainer, { backgroundColor: theme.surface }]}>
-            <InputFilter
-              value={searchValue}
-              onChangeText={setSearchValue}
+      <InputFilter
+        value={searchValue}
+        onChangeText={setSearchValue}
               placeholder="Buscar tarea..."
               style={[styles.searchInput, { backgroundColor: theme.card }]}
-            />
+      />
           </View>
 
           <View style={[styles.monthNavigator, { backgroundColor: theme.card }]}>
-            <TouchableOpacity onPress={handlePrevMonth}>
+        <TouchableOpacity onPress={handlePrevMonth}>
               <Ionicons name="chevron-back" size={24} color={theme.subtext} />
-            </TouchableOpacity>
+        </TouchableOpacity>
             <ThemedText style={[styles.monthText, { color: theme.text }]}>
               {monthNames[currentDate.getMonth()]}
-            </ThemedText>
-            <TouchableOpacity onPress={handleNextMonth}>
+        </ThemedText>
+        <TouchableOpacity onPress={handleNextMonth}>
               <Ionicons name="chevron-forward" size={24} color={theme.subtext} />
-            </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
+
+          {/* Agregar los filtros de estado */}
+          <View style={[styles.statusFiltersContainer, { backgroundColor: theme.surface }]}>
+            {Object.entries(TASK_FILTERS).map(([key, label]) => (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.filterButton,
+                  { 
+                    backgroundColor: taskFilter === key ? theme.primary : theme.card,
+                    marginRight: 8
+                  },
+                ]}
+                onPress={() => setTaskFilter(key)}
+              >
+                <View style={styles.filterContent}>
+                  <ThemedText style={[
+                    styles.filterText,
+                    { color: taskFilter === key ? '#FFFFFF' : theme.subtext }
+                  ]}>
+                    {label}
+                  </ThemedText>
+                  <View style={[
+                    styles.countBadge,
+                    { backgroundColor: taskFilter === key ? '#FFFFFF' : theme.primary }
+                  ]}>
+                    <ThemedText style={[
+                      styles.countText,
+                      { color: taskFilter === key ? theme.primary : '#FFFFFF' }
+                    ]}>
+                      {getTaskCountByFilter(key)}
+                    </ThemedText>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -338,26 +397,50 @@ export default function TasksScreen() {
                   <View style={styles.taskContent}>
                     <View style={styles.taskHeader}>
                       <View style={styles.taskTitleContainer}>
-                        <ThemedText style={[styles.taskName, { color: theme.text }]}>
-                          {task.name}
-                        </ThemedText>
-                        <ThemedText style={[styles.taskDate, { color: theme.subtext }]}>
-                          {task.createDate.toLocaleDateString()}
-                        </ThemedText>
+                        <View style={styles.titleRow}>
+                          <View style={styles.statusIndicatorContainer}>
+                            <View style={[
+                              styles.statusIndicator, 
+                              { backgroundColor: task.end_date > new Date() ? '#4CAF50' : '#FF5252' }
+                            ]} />
+                            <ThemedText style={[styles.taskName, { color: theme.text }]}>
+                              {task.name}
+                            </ThemedText>
+                          </View>
+                        </View>
+                        <View style={styles.datesContainer}>
+                          <View style={styles.dateItem}>
+                            <Ionicons name="calendar-outline" size={14} color={theme.subtext} />
+                            <ThemedText style={[styles.taskDate, { color: theme.subtext }]}>
+                              Creada: {task.createDate.toLocaleDateString()}
+                            </ThemedText>
+                          </View>
+                          <View style={styles.dateItem}>
+                            <Ionicons name="time-outline" size={14} color={theme.subtext} />
+                            <ThemedText style={[styles.taskDate, { color: theme.subtext }]}>
+                              Entrega: {task.end_date.toLocaleDateString()}
+                            </ThemedText>
+                          </View>
+                        </View>
                       </View>
-                      <View style={styles.weightBadge}>
-                        <ThemedText style={styles.weightText}>
-                          {task.weight}%
-                        </ThemedText>
-                      </View>
-                    </View>
-                    
-                    <View style={[styles.taskDetails, { borderTopColor: theme.border }]}>
-                      <View style={styles.detailItem}>
-                        <Ionicons name="school-outline" size={16} color={theme.subtext} />
-                        <ThemedText style={[styles.detailText, { color: theme.subtext }]}>
-                          {task.dimension.dimension}
-                        </ThemedText>
+                      <View style={styles.taskMetadata}>
+                        <View style={[
+                          styles.dimensionContainer,
+                          { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
+                        ]}>
+                          <Ionicons name="school-outline" size={14} color={theme.subtext} />
+                          <ThemedText 
+                            style={[styles.dimensionText, { color: theme.subtext }]}
+                            numberOfLines={1}
+                          >
+                            {task.dimension}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.weightBadge}>
+                          <ThemedText style={styles.weightText}>
+                            {task.weight}%
+                          </ThemedText>
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -401,7 +484,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   titleRow: {
-    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -412,7 +494,7 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     padding: 16,
-    paddingTop: 8,
+    paddingTop: 0,
   },
   scrollContent: {
     flex: 1,
@@ -426,7 +508,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 10,
     marginBottom: 8,
   },
   monthText: {
@@ -438,11 +520,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   taskCard: {
-    borderRadius: 12,
+    borderRadius: 10,
     marginHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 5,
     overflow: 'hidden',
-    elevation: 2,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
@@ -450,7 +532,7 @@ const styles = StyleSheet.create({
   },
   taskContent: {
     padding: 16,
-    gap: 12,
+    gap: 0,
   },
   taskHeader: {
     flexDirection: 'row',
@@ -464,6 +546,15 @@ const styles = StyleSheet.create({
   taskName: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  datesContainer: {
+    marginTop: 4,
+    gap: 4,
+  },
+  dateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   taskDate: {
     fontSize: 12,
@@ -479,18 +570,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  taskDetails: {
-    flexDirection: 'row',
-    paddingTop: 8,
-    borderTopWidth: 1,
+  taskMetadata: {
+    alignItems: 'flex-end',
+    gap: 8,
+    flex: 1,
+    marginLeft: 8,
   },
-  detailItem: {
+  dimensionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    maxWidth: '100%',
   },
-  detailText: {
+  dimensionText: {
     fontSize: 12,
+    flexShrink: 1,
   },
   loader: {
     marginTop: 20,
@@ -505,5 +602,52 @@ const styles = StyleSheet.create({
   taskButton: {
     marginVertical: 4,
     marginHorizontal: 16,
+  },
+  statusFiltersContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 0,
+    marginBottom: 0,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  filterContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  countBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statusIndicatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 4,
   },
 });

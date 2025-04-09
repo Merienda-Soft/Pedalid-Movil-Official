@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, useColorScheme, TouchableOpacity, ActivityIndicator, Image, ScrollView, Linking } from 'react-native';
+import { View, StyleSheet, useColorScheme, TouchableOpacity, ActivityIndicator, Image, ScrollView, Linking, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
@@ -20,6 +20,7 @@ export default function TaskDetailScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [submittedFiles, setSubmittedFiles] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
   
   const { studentId, taskId } = route.params;
 
@@ -208,6 +209,13 @@ export default function TaskDetailScreen() {
     }
   };
 
+  // Función para manejar el refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchTaskDetails();
+    setRefreshing(false);
+  };
+
   if (loading) {
     return (
       <ThemedView style={[styles.container, { backgroundColor: theme.surface }]}>
@@ -218,7 +226,7 @@ export default function TaskDetailScreen() {
 
   const assignment = task?.assignments?.[0];
   const qualification = assignment?.qualification?.trim() || '-';
-  const isSubmitted = assignment?.status === 1;
+  const isSubmitted = assignment?.status === 1 || assignment?.status === 2;
   const isLate = new Date(task?.end_date) < new Date();
 
   return (
@@ -243,7 +251,17 @@ export default function TaskDetailScreen() {
 
       {/* Contenido principal */}
       <View style={styles.mainContent}>
-        <ScrollView style={styles.scrollContent}>
+        <ScrollView 
+          style={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.primary]}
+              tintColor={theme.primary}
+            />
+          }
+        >
           {/* Encabezado de la tarea */}
           <View style={[styles.headerFixed, { backgroundColor: theme.surface }]}>
             <View style={styles.header}>
@@ -359,8 +377,15 @@ export default function TaskDetailScreen() {
                   </View>
                   
                   <TouchableOpacity 
-                    style={[styles.cancelButton, { backgroundColor: theme.error }]}
+                    style={[
+                      styles.cancelButton, 
+                      { 
+                        backgroundColor: theme.error,
+                        opacity: assignment.status === 2 ? 0.5 : 1 
+                      }
+                    ]}
                     onPress={handleCancelSubmit}
+                    disabled={assignment.status === 2}
                   >
                     <ThemedText style={styles.cancelButtonText}>
                       Cancelar Envío
@@ -626,7 +651,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 12,
   },
   cancelButtonText: {
     color: '#FFFFFF',

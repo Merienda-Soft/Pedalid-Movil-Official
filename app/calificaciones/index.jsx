@@ -10,6 +10,54 @@ import { useGlobalState } from '../../services/UserContext';
 import { API_BASE_URL } from "../../services/apiConfig";
 import { getActivityByIdwithassignments, updateActivity } from '../../services/activity';
 
+const StudentListItem = ({ student, taskId, colorScheme, navigateToTaskDetail }) => {
+  const colors = {
+    text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+    subtext: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
+    background: colorScheme === 'dark' ? '#1E1E1E' : '#F5F5F5',
+    border: colorScheme === 'dark' ? '#2C2C2E' : '#E0E0E0',
+    icon: colorScheme === 'dark' ? '#FFFFFF' : '#17A2B8',
+    success: '#4CAF50',
+    pending: '#FF9800'
+  };
+
+  // Determinar si ha entregado la tarea
+  const hasSubmitted = student.status === 1;
+
+  return (
+    <ThemedView style={[
+      styles.studentListItem,
+      hasSubmitted ? styles.submittedItem : styles.pendingItem
+    ]}>
+      <View style={styles.studentInfo}>
+        <View style={styles.nameRow}>
+          <View style={[
+            styles.statusIndicator, 
+            { backgroundColor: hasSubmitted ? colors.success : colors.pending }
+          ]} />
+          <ThemedText style={styles.studentName}>{student.nombre}</ThemedText>
+        </View>
+        <ThemedText style={[
+          styles.submissionStatus, 
+          { color: hasSubmitted ? colors.success : colors.pending }
+        ]}>
+          {hasSubmitted ? 'Entregada' : 'Pendiente'}
+        </ThemedText>
+      </View>
+      <TouchableOpacity 
+        onPress={() => navigateToTaskDetail(student.id, taskId)}
+        style={styles.iconButton}
+      >
+        <Ionicons 
+          name={hasSubmitted ? "document-text" : "document-text-outline"} 
+          size={24} 
+          color={colors.icon} 
+        />
+      </TouchableOpacity>
+    </ThemedView>
+  );
+};
+
 export default function TasksScreenCalification() {
   const colorScheme = useColorScheme();
   const route = useRoute();
@@ -57,7 +105,8 @@ export default function TasksScreenCalification() {
             id: assignment.student_id,
             nombre: `${assignment.student.person.name} ${assignment.student.person.lastname} ${assignment.student.person.second_lastname || ''}`,
             calificacion: (assignment.qualification || "0").trim(),
-            rude: assignment.student.rude
+            rude: assignment.student.rude,
+            status: assignment.status
           }));
           
           setEstudiantes(estudiantesTransformados);
@@ -155,6 +204,10 @@ export default function TasksScreenCalification() {
     return unsubscribe;
   }, [changeCount, navigation]);
 
+  const navigateToTaskDetail = (studentId, taskId) => {
+    navigation.navigate('taskDetailProf', { studentId, taskId });
+  };
+
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -213,16 +266,28 @@ export default function TasksScreenCalification() {
         )}
 
         <View style={styles.studentsList}>
-          {estudiantes.map((estudiante, index) => (
-            <InputRate
-              key={estudiante.id}
-              name={estudiante.nombre}
-              grade={estudiante.calificacion}
-              onGradeChange={(newGrade) => handleGradeChange(index, newGrade)}
-              style={styles.studentItem}
-              theme={colorScheme}
-            />
-          ))}
+          {taskData && taskData.type === 0 ? (
+            estudiantes.map((estudiante) => (
+              <StudentListItem
+                key={estudiante.id}
+                student={estudiante}
+                taskId={idTask}
+                colorScheme={colorScheme}
+                navigateToTaskDetail={navigateToTaskDetail}
+              />
+            ))
+          ) : (
+            estudiantes.map((estudiante, index) => (
+              <InputRate
+                key={estudiante.id}
+                name={estudiante.nombre}
+                grade={estudiante.calificacion}
+                onGradeChange={(newGrade) => handleGradeChange(index, newGrade)}
+                style={styles.studentItem}
+                theme={colorScheme}
+              />
+            ))
+          )}
         </View>
       </View>
     </ParallaxScrollView>
@@ -288,4 +353,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  studentListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  studentInfo: {
+    flex: 1,
+  },
+  studentName: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  studentRude: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  iconButton: {
+    padding: 8,
+    borderRadius: 20,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  submittedItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#4CAF50',
+  },
+  pendingItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF9800',
+  },
+  submissionStatus: {
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: '500',
+  }
 });

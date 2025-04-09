@@ -32,6 +32,7 @@ export default function CalificacionLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }}/>
         <Stack.Screen name="editTask" options={{ headerShown: false }}/>
         <Stack.Screen name="TaskDetail" options={{ headerShown: false }}/>
+        <Stack.Screen name="taskDetailProf" options={{ headerShown: false }}/>
       </Stack>
     </ThemeProvider>
   );

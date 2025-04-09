@@ -64,12 +64,15 @@ export default function ReportsScreen() {
   };
 
   const navigateToSubjectReport = (curso, materia) => {
+    console.log('globalState.management', globalState.management);
     router.push({
       pathname: '/reportes',
       params: {
         materiaid: materia._id,
         cursoid: curso.curso._id,
-        teacherid: curso.professor
+        teacherid: curso.professor,
+        materiaName: materia.name,
+        management: JSON.stringify(globalState.management)
       }
     });
   };
@@ -107,7 +110,7 @@ export default function ReportsScreen() {
           <View style={styles.header}>
             <ThemedText type="title" style={styles.title}>Reportes</ThemedText>
             <ThemedText style={styles.subtitle}>
-              Gestión {globalState.management?.name || 'Actual'}
+              Gestión {globalState.management?.management || 'Actual'}
             </ThemedText>
           </View>
 

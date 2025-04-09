@@ -12,15 +12,16 @@ import { useColorScheme } from 'react-native';
 export default function ReportsScreen() {
   const colorScheme = useColorScheme();
   const route = useRoute();
-  const { materiaid, cursoid, teacherid, management } = route.params;
-  
+  const { materiaid, cursoid, teacherid, materiaName, management } = route.params;
   const [activities, setActivities] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDimension, setSelectedDimension] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const currentMonth = new Date().getMonth();
+    return currentMonth;
+  });
 
   // Colores basados en el tema
   const theme = {
@@ -52,7 +53,8 @@ export default function ReportsScreen() {
 
     try {
       // Modificamos la llamada para manejar el caso donde management es undefined
-      const managementId = management?.id || 1; // Valor por defecto si no existe
+      const managementId = JSON.parse(management)?.id; // Valor por defecto si no existe
+
 
       const [activitiesData, studentsData] = await Promise.all([
         getActivities(materiaid, cursoid, teacherid, managementId),
@@ -93,12 +95,11 @@ export default function ReportsScreen() {
     return activities.filter(activity => {
       const activityDate = new Date(activity.create_date);
       const monthMatch = activityDate.getMonth() === selectedMonth;
-      const yearMatch = activityDate.getFullYear() === selectedYear;
       const dimensionMatch = !selectedDimension || activity.dimension_id === selectedDimension;
       
-      return monthMatch && yearMatch && dimensionMatch;
+      return monthMatch && dimensionMatch;
     });
-  }, [activities, selectedMonth, selectedYear, selectedDimension]);
+  }, [activities, selectedMonth, selectedDimension]);
 
   const getStudentGrade = useCallback((studentId, taskId) => {
     const activity = activities.find(a => a.id === taskId);
@@ -120,24 +121,6 @@ export default function ReportsScreen() {
 
     if (grades.length === 0) return '-';
     return (grades.reduce((a, b) => a + b, 0) / grades.length).toFixed(1);
-  };
-
-  const handlePrevMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedMonth(11);
-      setSelectedYear(prev => prev - 1);
-    } else {
-      setSelectedMonth(prev => prev - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (selectedMonth === 11) {
-      setSelectedMonth(0);
-      setSelectedYear(prev => prev + 1);
-    } else {
-      setSelectedMonth(prev => prev + 1);
-    }
   };
 
   if (loading && !refreshing) {
@@ -163,12 +146,38 @@ export default function ReportsScreen() {
       }
     >
       <ThemedView style={styles.container}>
-        {/* Cabecera */}
-        <View style={styles.header}>
-          <ThemedText style={styles.title}>Registro de Notas</ThemedText>
+        {/* Cabecera actualizada */}
+        <View style={styles.titleContainer}>
+          <View style={styles.titleRow}>
+            <View style={styles.titleWrapper}>
+              <ThemedText type="title" style={styles.title}>Registro de Notas</ThemedText>
+              <ThemedText type="default" style={styles.managementText}>
+                Gestión {JSON.parse(management)?.management || '2024'}
+              </ThemedText>
+            </View>
+          </View>
           <ThemedText style={styles.subtitle}>
-            {route.params?.materiaName || 'Materia'}
+            {materiaName}
           </ThemedText>
+        </View>
+
+        {/* Selector de mes actualizado */}
+        <View style={[styles.monthNavigator, { backgroundColor: theme.card }]}>
+          <TouchableOpacity 
+            onPress={() => setSelectedMonth(prev => prev === 0 ? 11 : prev - 1)}
+            style={styles.monthButton}
+          >
+            <Ionicons name="chevron-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <ThemedText style={styles.monthText}>
+            {months[selectedMonth]}
+          </ThemedText>
+          <TouchableOpacity 
+            onPress={() => setSelectedMonth(prev => prev === 11 ? 0 : prev + 1)}
+            style={styles.monthButton}
+          >
+            <Ionicons name="chevron-forward" size={24} color={theme.text} />
+          </TouchableOpacity>
         </View>
 
         {/* Filtros de dimensión */}
@@ -220,19 +229,6 @@ export default function ReportsScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-        {/* Filtro de mes */}
-        <View style={styles.monthSelector}>
-          <TouchableOpacity onPress={handlePrevMonth}>
-            <Ionicons name="chevron-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-          <ThemedText style={styles.monthText}>
-            {`${months[selectedMonth]} ${selectedYear}`}
-          </ThemedText>
-          <TouchableOpacity onPress={handleNextMonth}>
-            <Ionicons name="chevron-forward" size={24} color={theme.text} />
-          </TouchableOpacity>
-        </View>
 
         {/* Tabla de calificaciones */}
         <ScrollView horizontal>
@@ -307,27 +303,44 @@ export default function ReportsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    marginBottom: 20,
+  titleContainer: {
+    paddingVertical: 16,
+    paddingHorizontal: 0,
+  },
+  titleRow: {
+    flexDirection: 'column',
+    gap: 4,
+  },
+  titleWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 4,
+  },
+  managementText: {
+    fontSize: 14,
+    opacity: 0.7,
   },
   subtitle: {
     fontSize: 16,
     opacity: 0.7,
+    marginTop: 4,
   },
   filterContainer: {
     marginBottom: 20,
+    paddingHorizontal: 16,
   },
   filterButton: {
     flexDirection: 'row',
@@ -345,7 +358,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   tableContainer: {
-    borderRadius: 12,
+    borderRadius: 0,
     overflow: 'hidden',
   },
   headerRow: {
@@ -398,18 +411,20 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
-  monthSelector: {
+  monthNavigator: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    marginBottom: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
+    padding: 16,
+    marginHorizontal: 0,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  monthButton: {
+    padding: 8,
   },
   monthText: {
     fontSize: 16,
     fontWeight: '600',
-    marginHorizontal: 20,
   }
 });

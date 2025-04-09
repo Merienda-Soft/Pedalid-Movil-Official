@@ -73,7 +73,7 @@ export default function AttendanceScreen() {
         console.error("Error cargando datos requeridos:", error);
       }
     };
-    
+
     loadRequiredIds();
   }, []);
 
@@ -239,9 +239,9 @@ export default function AttendanceScreen() {
         if (changedStudents.length === 0) {
           Alert.alert('Información', 'No hay cambios para guardar');
           setSaving(false);
-          return;
-        }
-        
+      return;
+    }
+    
         // Preparar solo los datos de los estudiantes modificados
         const studentsData = changedStudents.map(studentId => {
           const currentValue = attendances[studentId];
@@ -274,7 +274,7 @@ export default function AttendanceScreen() {
         // Si es una nueva asistencia, usar registerAttendance como antes
         const quarter = "Q1"; // Ajustar según necesidades
         
-        const attendanceData = {
+      const attendanceData = {
           attendance_date: dateString,
           quarter: quarter,
           management_id: management.id,
@@ -297,7 +297,7 @@ export default function AttendanceScreen() {
           }
           Alert.alert('Éxito', 'Asistencia guardada correctamente');
           setExistingAttendance(true);
-        } else {
+    } else {
           throw new Error('Error al guardar la asistencia');
         }
       }
@@ -362,18 +362,18 @@ export default function AttendanceScreen() {
             />
           </View>
           
-          {showDatePicker && (
-            <DateTimePicker
-              value={selectedDate}
-              mode="date"
-              display="default"
-              onChange={(event, date) => {
-                setShowDatePicker(false);
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              setShowDatePicker(false);
                 if (date) setSelectedDate(date);
-              }}
-            />
-          )}
-        </View>
+            }}
+          />
+        )}
+      </View>
 
         {/* Contador de estudiantes más compacto */}
         <ThemedText type="subtitle" style={styles.sectionTitle}>

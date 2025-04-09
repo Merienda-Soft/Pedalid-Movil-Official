@@ -5,7 +5,7 @@ import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { getStudentsByCourse, registerAttendance, getAttendanceByCourseSubjectDate } from '../../services/attendance';
+import { getStudentsByCourse, registerAttendance, getAttendanceByCourseSubjectDate, updateAttendanceRecord } from '../../services/attendance';
 import { useGlobalState } from '../../services/UserContext';
 import { useColorScheme } from 'react-native';
 
@@ -31,6 +31,8 @@ export default function AttendanceScreen() {
   const [existingAttendance, setExistingAttendance] = useState(false);
   const [managementIdValue, setManagementIdValue] = useState(null);
   const [professorIdValue, setProfessorIdValue] = useState(null);
+  const [attendanceId, setAttendanceId] = useState(null);
+  const [originalAttendances, setOriginalAttendances] = useState({});
 
   // Colores basados en el tema
   const theme = {
@@ -102,20 +104,50 @@ export default function AttendanceScreen() {
             dateString
           );
           
+          console.log("Respuesta completa:", JSON.stringify(existingData));
+          
           if (existingData && existingData.ok && existingData.data) {
-            // Si existe, cargar esos datos
+            // Guardar el ID de la asistencia
+            if (existingData.data.id) {
+              setAttendanceId(existingData.data.id);
+            }
+            
+            // Ver la estructura completa de los records
+            console.log("Records:", JSON.stringify(existingData.data.records));
+            
+            // Intentar acceder a cada registro
             const recordsMap = {};
-            existingData.data.records.forEach(record => {
-              recordsMap[record.student_id] = record.status_attendance;
+            
+            existingData.data.records.forEach((record, index) => {
+              console.log(`Record ${index}:`, JSON.stringify(record));
+              
+              // Asegúrate de que record.student_id y record.status existan
+              if (record && record.student_id !== undefined && record.status) {
+                // Guardar el estado y el ID del registro
+                recordsMap[record.student_id] = {
+                  status: record.status.trim(),
+                  record_id: record.id // Guardar el ID del registro
+                };
+              }
             });
-            setAttendances(recordsMap);
-            setExistingAttendance(true);
+            
+            console.log("Mapa de asistencias:", recordsMap);
+            
+            // Solo establecer como existente si hay registros
+            if (Object.keys(recordsMap).length > 0) {
+              setAttendances(recordsMap);
+              setExistingAttendance(true);
+              setOriginalAttendances(JSON.parse(JSON.stringify(recordsMap)));
+            } else {
+              setAttendances(newAttendances);
+              setExistingAttendance(false);
+            }
           } else {
             setAttendances(newAttendances);
             setExistingAttendance(false);
           }
         } catch (error) {
-          // Si no existe asistencia para esa fecha, usar valores por defecto
+          console.error("Error al cargar asistencias:", error);
           setAttendances(newAttendances);
           setExistingAttendance(false);
         }
@@ -149,10 +181,26 @@ export default function AttendanceScreen() {
 
   // Manejar el cambio de asistencia
   const handleAttendanceChange = (studentId, status) => {
-    setAttendances(prev => ({
-      ...prev,
-      [studentId]: status
-    }));
+    setAttendances(prev => {
+      const currentValue = prev[studentId];
+      
+      // Si el valor actual es un objeto (con record_id), preservar el record_id
+      if (typeof currentValue === 'object' && currentValue.record_id) {
+        return {
+          ...prev,
+          [studentId]: {
+            status: status,
+            record_id: currentValue.record_id
+          }
+        };
+      }
+      
+      // Si no es un objeto, simplemente actualizar el estado
+      return {
+        ...prev,
+        [studentId]: status
+      };
+    });
   };
 
   // Guardar la asistencia
@@ -170,31 +218,93 @@ export default function AttendanceScreen() {
         throw new Error('No se encontró el ID del profesor (professor_id)');
       }
       
-      // Preparar los datos para la API
-      const quarter = "Q1"; // Ajustar según necesidades o hacer dinámico
-      
-      const attendanceData = {
-        attendance_date: dateString,
-        quarter: quarter,
-        management_id: management.id,
-        subject_id: materiaid,
-        professor_id: teacherid,
-        course_id: cursoid
-      };
-      
-      const recordsData = Object.keys(attendances).map(studentId => ({
-        student_id: parseInt(studentId),
-        status_attendance: attendances[studentId]
-      }));
-      
-      const response = await registerAttendance(attendanceData, recordsData);
-      
-      if (response && response.ok) {
-        Alert.alert('Éxito', 'Asistencia guardada correctamente');
-        setExistingAttendance(true);
+      // Si es una actualización
+      if (existingAttendance && attendanceId) {
+        // Filtrar solo los estudiantes con cambios
+        const changedStudents = Object.keys(attendances).filter(studentId => {
+          const currentValue = attendances[studentId];
+          const originalValue = originalAttendances[studentId];
+          
+          // Obtener el estado actual
+          const currentStatus = typeof currentValue === 'object' ? currentValue.status : currentValue;
+          
+          // Obtener el estado original
+          const originalStatus = typeof originalValue === 'object' ? originalValue.status : originalValue;
+          
+          // Comparar para ver si hay cambio
+          return currentStatus !== originalStatus;
+        });
+        
+        // Si no hay cambios, mostrar mensaje y salir
+        if (changedStudents.length === 0) {
+          Alert.alert('Información', 'No hay cambios para guardar');
+          setSaving(false);
+          return;
+        }
+        
+        // Preparar solo los datos de los estudiantes modificados
+        const studentsData = changedStudents.map(studentId => {
+          const currentValue = attendances[studentId];
+          const status = typeof currentValue === 'object' ? currentValue.status : currentValue;
+          
+          return {
+            student_id: parseInt(studentId),
+            status_attendance: status
+          };
+        });
+        
+        const updateData = {
+          attendance_id: attendanceId,
+          students: studentsData
+        };
+        
+        console.log("Enviando actualización:", JSON.stringify(updateData));
+        
+        // Usar el endpoint de actualización
+        const response = await updateAttendanceRecord(updateData);
+        
+        if (response && response.ok) {
+          Alert.alert('Éxito', 'Asistencia actualizada correctamente');
+          // Actualizar los originales después de guardar
+          setOriginalAttendances(JSON.parse(JSON.stringify(attendances)));
+        } else {
+          throw new Error('Error al actualizar la asistencia');
+        }
       } else {
-        throw new Error('Error al guardar la asistencia');
+        // Si es una nueva asistencia, usar registerAttendance como antes
+        const quarter = "Q1"; // Ajustar según necesidades
+        
+        const attendanceData = {
+          attendance_date: dateString,
+          quarter: quarter,
+          management_id: management.id,
+          subject_id: materiaid,
+          professor_id: teacherid,
+          course_id: cursoid
+        };
+        
+        const recordsData = Object.keys(attendances).map(studentId => ({
+          student_id: parseInt(studentId),
+          status_attendance: attendances[studentId]
+        }));
+        
+        const response = await registerAttendance(attendanceData, recordsData);
+        
+        if (response && response.ok) {
+          // Guardar el ID de asistencia recién creada si está disponible
+          if (response.data && response.data.id) {
+            setAttendanceId(response.data.id);
+          }
+          Alert.alert('Éxito', 'Asistencia guardada correctamente');
+          setExistingAttendance(true);
+        } else {
+          throw new Error('Error al guardar la asistencia');
+        }
       }
+      
+      // Recargar los datos para reflejar los cambios
+      fetchData();
+      
     } catch (error) {
       Alert.alert('Error', `No se pudo guardar la asistencia: ${error.message}`);
     } finally {
@@ -203,8 +313,10 @@ export default function AttendanceScreen() {
   };
 
   // Renderizar botón de asistencia
-  const renderAttendanceButton = (studentId, status, targetStatus) => {
-    const isSelected = attendances[studentId] === targetStatus;
+  const renderAttendanceButton = (studentId, currentValue, targetStatus) => {
+    // Determinar el estado actual considerando el nuevo formato
+    const currentStatus = typeof currentValue === 'object' ? currentValue.status : currentValue;
+    const isSelected = currentStatus === targetStatus;
     
     let iconName, color, label;
     switch (targetStatus) {
@@ -316,9 +428,29 @@ export default function AttendanceScreen() {
           <ThemedView key={student.student_id} style={styles.studentCard}>
             <View style={styles.studentInfo}>
               <View style={styles.nameContainer}>
-                <ThemedText style={styles.studentName}>
-                  {student.name} {student.lastname} {student.second_lastname || ''}
-                </ThemedText>
+                <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+                  <ThemedText style={styles.studentName}>
+                    {student.name} {student.lastname} {student.second_lastname || ''}
+                  </ThemedText>
+                  
+                  {/* Indicador de estado actual */}
+                  {attendances[student.student_id] && (
+                    <View style={{
+                      backgroundColor: 
+                        attendances[student.student_id] === ATTENDANCE_STATES.PRESENT ? theme.success :
+                        attendances[student.student_id] === ATTENDANCE_STATES.ABSENT ? theme.error : theme.warning,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 10,
+                      marginLeft: 10
+                    }}>
+                      <Text style={{color: '#FFFFFF', fontSize: 12, fontWeight: '500'}}>
+                        {attendances[student.student_id] === ATTENDANCE_STATES.PRESENT ? 'Presente' :
+                         attendances[student.student_id] === ATTENDANCE_STATES.ABSENT ? 'Ausente' : 'Justificado'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <ThemedText style={styles.studentRude}>
                   RUDE: {student.matricula || 'N/A'}
                 </ThemedText>
@@ -468,5 +600,10 @@ const styles = StyleSheet.create({
   statusText: {
     color: '#FFFFFF',
     fontWeight: '500',
+  },
+  attendanceStatus: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 5,
   },
 });

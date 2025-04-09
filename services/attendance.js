@@ -33,15 +33,13 @@ export const getAttendanceByCourseDate = async (courseId, date) => {
 };
 
 // Actualizar estado de asistencia de un estudiante
-export const updateAttendanceRecord = async (recordId, status) => {
-    const response = await fetch(`${API_BASE_URL}/attendance/record/${recordId}`, {
+export const updateAttendanceRecord = async (updateData) => {
+    const response = await fetch(`${API_BASE_URL}/attendance/attendance/batch-update`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            status_attendance: status
-        })
+        body: JSON.stringify(updateData)
     });
     return response.json();
 };

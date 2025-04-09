@@ -1,51 +1,47 @@
 import { API_BASE_URL } from './apiConfig';  // Asegúrate de tener un archivo de configuración con tu URL base de la API
 
-// Obtener estudiantes por curso y materia
-export const getStudentsByCourseAndSubject = async (courseid, materiaid) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/registration/inscripciones?courseid=${courseid}&materiaid=${materiaid}`);
-    
-    if (!response.ok) {
-      throw new Error(`Error al obtener estudiantes: ${response.status}`);
-    }
-
-    const students = await response.json();
-    return students;
-  } catch (error) {
-    console.error("Error fetching students:", error);
-    throw error;
-  }
+export const getStudentsByCourse = async (courseId) => {
+    const response = await fetch(`${API_BASE_URL}/students/course/${courseId}`);
+    return response.json();
 };
 
-// Guardar asistencia
-export const saveAttendance = async (attendanceData) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/attendances/attendances`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(attendanceData),
+// Registrar asistencia para un curso completo
+export const registerAttendance = async (attendanceData, recordsData) => {
+    const response = await fetch(`${API_BASE_URL}/attendance/register`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            attendance: attendanceData,
+            records: recordsData
+        })
     });
-
-    if (!response.ok) {
-      throw new Error(`Error al guardar asistencia: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error("Error saving attendance:", error);
-    throw error;
-  }
+    return response.json();
 };
 
-export const getAttendanceByCourseAndDate = async (courseid, materiaid, date) => {
-    const response = await fetch(`${API_BASE_URL}/attendances//attendances/search?courseid=${courseid}&materiaid=${materiaid}&date=${date}`);
-    
-    if (!response.ok) {
-      throw new Error(`Error al buscar asistencia: ${response.status}`);
-    }
-    
-    return await response.json();
-  };
+// Obtener asistencia por curso, materia y fecha
+export const getAttendanceByCourseSubjectDate = async (courseId, subjectId, date) => {
+    const response = await fetch(`${API_BASE_URL}/attendance/course/${courseId}/subject/${subjectId}/date/${date}`);
+    return response.json();
+};
+
+// Obtener asistencia por curso y fecha
+export const getAttendanceByCourseDate = async (courseId, date) => {
+    const response = await fetch(`${API_BASE_URL}/attendance/course/${courseId}/date/${date}`);
+    return response.json();
+};
+
+// Actualizar estado de asistencia de un estudiante
+export const updateAttendanceRecord = async (recordId, status) => {
+    const response = await fetch(`${API_BASE_URL}/attendance/record/${recordId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            status_attendance: status
+        })
+    });
+    return response.json();
+};

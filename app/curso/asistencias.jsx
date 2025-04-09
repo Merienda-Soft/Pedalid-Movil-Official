@@ -312,51 +312,6 @@ export default function AttendanceScreen() {
     }
   };
 
-  // Renderizar botón de asistencia
-  const renderAttendanceButton = (studentId, currentValue, targetStatus) => {
-    // Determinar el estado actual considerando el nuevo formato
-    const currentStatus = typeof currentValue === 'object' ? currentValue.status : currentValue;
-    const isSelected = currentStatus === targetStatus;
-    
-    let iconName, color, label;
-    switch (targetStatus) {
-      case ATTENDANCE_STATES.PRESENT:
-        iconName = 'checkmark-circle';
-        color = theme.success;
-        label = 'Presente';
-        break;
-      case ATTENDANCE_STATES.ABSENT:
-        iconName = 'close-circle';
-        color = theme.error;
-        label = 'Ausente';
-        break;
-      case ATTENDANCE_STATES.JUSTIFIED:
-        iconName = 'alert-circle';
-        color = theme.warning;
-        label = 'Justificado';
-        break;
-    }
-    
-    return (
-      <TouchableOpacity
-        style={[
-          styles.attendanceButton,
-          { borderColor: color, backgroundColor: isSelected ? color : 'transparent' }
-        ]}
-        onPress={() => handleAttendanceChange(studentId, targetStatus)}
-      >
-        <Ionicons
-          name={iconName}
-          size={22}
-          color={isSelected ? '#FFFFFF' : color}
-        />
-        <Text style={[styles.buttonText, { color: isSelected ? '#FFFFFF' : color }]}>
-          {label}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
   if (loading && !refreshing) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
@@ -381,23 +336,31 @@ export default function AttendanceScreen() {
       }
     >
       <ThemedView style={styles.container}>
-        {/* Título y subtítulo */}
-        <View style={styles.headerContainer}>
-          <ThemedText type="title" style={styles.title}>Registro de Asistencias</ThemedText>
-          <ThemedText type="default" style={styles.subtitle}>{cursoName}</ThemedText>
-        </View>
-        
-        {/* Selector de fecha */}
-        <ThemedView style={styles.dateContainer}>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Ionicons name="calendar-outline" size={24} color={theme.primary} />
-            <ThemedText style={styles.dateText}>
-              {selectedDate.toLocaleDateString()}
-            </ThemedText>
-          </TouchableOpacity>
+        {/* Cabecera compacta con título y fecha */}
+        <View style={styles.headerRow}>
+          <View>
+            <ThemedText type="title" style={styles.title}>Asistencias</ThemedText>
+            <ThemedText type="subtitle" style={styles.subtitle}>{cursoName}</ThemedText>
+          </View>
+          
+          <View style={styles.dateStatusContainer}>
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={18} color={theme.primary} />
+              <ThemedText style={styles.dateText}>
+                {selectedDate.toLocaleDateString()}
+              </ThemedText>
+            </TouchableOpacity>
+            
+            <View 
+              style={[
+                styles.statusDot, 
+                { backgroundColor: existingAttendance ? theme.success : theme.warning }
+              ]}
+            />
+          </View>
           
           {showDatePicker && (
             <DateTimePicker
@@ -410,60 +373,95 @@ export default function AttendanceScreen() {
               }}
             />
           )}
-        </ThemedView>
-        
-        {/* Estado de la asistencia */}
-        <View style={styles.statusContainer}>
-          <View style={[styles.statusBadge, { backgroundColor: existingAttendance ? theme.success : theme.warning }]}>
-            <ThemedText style={styles.statusText}>
-              {existingAttendance ? 'Asistencia registrada' : 'Pendiente de registro'}
-            </ThemedText>
-          </View>
         </View>
+
+        {/* Contador de estudiantes más compacto */}
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          {students.length} estudiantes
+        </ThemedText>
         
-        {/* Lista de estudiantes */}
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Estudiantes ({students.length})</ThemedText>
-        
-        {students.map((student) => (
-          <ThemedView key={student.student_id} style={styles.studentCard}>
-            <View style={styles.studentInfo}>
-              <View style={styles.nameContainer}>
-                <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
-                  <ThemedText style={styles.studentName}>
-                    {student.name} {student.lastname} {student.second_lastname || ''}
-                  </ThemedText>
-                  
-                  {/* Indicador de estado actual */}
-                  {attendances[student.student_id] && (
-                    <View style={{
-                      backgroundColor: 
-                        attendances[student.student_id] === ATTENDANCE_STATES.PRESENT ? theme.success :
-                        attendances[student.student_id] === ATTENDANCE_STATES.ABSENT ? theme.error : theme.warning,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 10,
-                      marginLeft: 10
-                    }}>
-                      <Text style={{color: '#FFFFFF', fontSize: 12, fontWeight: '500'}}>
-                        {attendances[student.student_id] === ATTENDANCE_STATES.PRESENT ? 'Presente' :
-                         attendances[student.student_id] === ATTENDANCE_STATES.ABSENT ? 'Ausente' : 'Justificado'}
-                      </Text>
+        {/* Lista de estudiantes en columna */}
+        <View style={styles.studentsColumn}>
+          {students
+            // Ordenar por apellido
+            .sort((a, b) => a.lastname.localeCompare(b.lastname))
+            .map((student) => {
+              const currentValue = attendances[student.student_id];
+              const currentStatus = typeof currentValue === 'object' ? 
+                currentValue.status : currentValue;
+              let statusColor;
+              
+              switch(currentStatus) {
+                case ATTENDANCE_STATES.PRESENT: 
+                  statusColor = theme.success; break;
+                case ATTENDANCE_STATES.ABSENT: 
+                  statusColor = theme.error; break;
+                case ATTENDANCE_STATES.JUSTIFIED: 
+                  statusColor = theme.warning; break;
+              }
+              
+              return (
+                <ThemedView 
+                  key={student.student_id} 
+                  style={[styles.studentCard, {borderLeftColor: statusColor, borderLeftWidth: 3}]}
+                >
+                  <View style={styles.studentRow}>
+                    <ThemedText numberOfLines={1} style={styles.studentName}>
+                      {student.lastname} {student.second_lastname || ''} {student.name}
+                    </ThemedText>
+                    
+                    <View style={styles.attendanceOptions}>
+                      <TouchableOpacity
+                        style={[styles.attendanceButton, { 
+                          backgroundColor: currentStatus === ATTENDANCE_STATES.PRESENT ? 
+                            theme.success : 'transparent',
+                          borderColor: theme.success
+                        }]}
+                        onPress={() => handleAttendanceChange(student.student_id, ATTENDANCE_STATES.PRESENT)}
+                      >
+                        <Text style={{ 
+                          color: currentStatus === ATTENDANCE_STATES.PRESENT ? '#FFFFFF' : theme.success,
+                          fontWeight: 'bold',
+                          fontSize: 14
+                        }}>P</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[styles.attendanceButton, { 
+                          backgroundColor: currentStatus === ATTENDANCE_STATES.ABSENT ? 
+                            theme.error : 'transparent',
+                          borderColor: theme.error
+                        }]}
+                        onPress={() => handleAttendanceChange(student.student_id, ATTENDANCE_STATES.ABSENT)}
+                      >
+                        <Text style={{ 
+                          color: currentStatus === ATTENDANCE_STATES.ABSENT ? '#FFFFFF' : theme.error,
+                          fontWeight: 'bold',
+                          fontSize: 14
+                        }}>A</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[styles.attendanceButton, { 
+                          backgroundColor: currentStatus === ATTENDANCE_STATES.JUSTIFIED ? 
+                            theme.warning : 'transparent',
+                          borderColor: theme.warning
+                        }]}
+                        onPress={() => handleAttendanceChange(student.student_id, ATTENDANCE_STATES.JUSTIFIED)}
+                      >
+                        <Text style={{ 
+                          color: currentStatus === ATTENDANCE_STATES.JUSTIFIED ? '#FFFFFF' : theme.warning,
+                          fontWeight: 'bold',
+                          fontSize: 14
+                        }}>J</Text>
+                      </TouchableOpacity>
                     </View>
-                  )}
-                </View>
-                <ThemedText style={styles.studentRude}>
-                  RUDE: {student.matricula || 'N/A'}
-                </ThemedText>
-              </View>
-            </View>
-            
-            <View style={styles.attendanceOptions}>
-              {renderAttendanceButton(student.student_id, attendances[student.student_id], ATTENDANCE_STATES.PRESENT)}
-              {renderAttendanceButton(student.student_id, attendances[student.student_id], ATTENDANCE_STATES.ABSENT)}
-              {renderAttendanceButton(student.student_id, attendances[student.student_id], ATTENDANCE_STATES.JUSTIFIED)}
-            </View>
-          </ThemedView>
-        ))}
+                  </View>
+                </ThemedView>
+              );
+            })
+          }
+        </View>
         
         {/* Botón de guardar */}
         <TouchableOpacity
@@ -475,9 +473,9 @@ export default function AttendanceScreen() {
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <>
-              <Ionicons name="save-outline" size={24} color="#FFFFFF" />
+              <Ionicons name="save-outline" size={22} color="#FFFFFF" />
               <Text style={styles.saveButtonText}>
-                {existingAttendance ? 'Actualizar Asistencia' : 'Guardar Asistencia'}
+                {existingAttendance ? 'Actualizar' : 'Guardar'}
               </Text>
             </>
           )}
@@ -489,38 +487,46 @@ export default function AttendanceScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: 10,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerContainer: {
-    marginBottom: 16,
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 0,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     opacity: 0.8,
   },
-  dateContainer: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+  dateStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 6,
   },
   dateText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '500',
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   reactLogo: {
     height: '100%',
@@ -528,82 +534,55 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-    marginTop: 8,
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  studentsColumn: {
+    flexDirection: 'column',
   },
   studentCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    width: '100%',
+    padding: 8,
+    marginBottom: 6,
+    borderRadius: 5,
   },
-  studentInfo: {
+  studentRow: {
     flexDirection: 'row',
-    marginBottom: 12,
-  },
-  nameContainer: {
-    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   studentName: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  studentRude: {
-    fontSize: 12,
-    opacity: 0.7,
-    marginTop: 2,
+    fontSize: 18,
+    fontWeight: '500',
+    flex: 1,
+    marginRight: 10,
   },
   attendanceOptions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: 8,
   },
   attendanceButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: 30,
+    height: 30,
+    borderRadius: 0,
     justifyContent: 'center',
-    gap: 8,
-    padding: 8,
-    borderRadius: 8,
+    alignItems: 'center',
     borderWidth: 1,
-  },
-  buttonText: {
-    fontSize: 13,
-    fontWeight: '500',
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#17A2B8',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
     gap: 8,
   },
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  statusContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  statusText: {
-    color: '#FFFFFF',
     fontWeight: '500',
-  },
-  attendanceStatus: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 5,
   },
 });

@@ -1,275 +1,300 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { StyleSheet, Image, View, ScrollView, TouchableOpacity, Alert, useColorScheme } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Image, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
-import { useThemeColor } from '../../hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
 import { getActivities } from '../../services/activity';
-import { useNavigation } from 'expo-router';
+import { getStudentsByCourse } from '../../services/attendance';
+import { useColorScheme } from 'react-native';
 
 export default function ReportsScreen() {
   const colorScheme = useColorScheme();
-  const navigation = useNavigation();
   const route = useRoute();
-  const { materiaid, cursoid, teacherid, materiaName } = route.params;
-  const [actividades, setActividades] = useState([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedType, setSelectedType] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { materiaid, cursoid, teacherid, management } = route.params;
+  
+  const [activities, setActivities] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedDimension, setSelectedDimension] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // Colores dinámicos basados en el tema
-  const colors = useMemo(() => ({
-    background: colorScheme === 'dark' ? '#1D3D47' : '#D0D0D0',
+  // Colores basados en el tema
+  const theme = {
+    background: colorScheme === 'dark' ? '#1D3D47' : '#F5F5F5',
+    card: colorScheme === 'dark' ? '#2A4A54' : '#FFFFFF',
     text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-    secondaryText: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
-    border: colorScheme === 'dark' ? '#2A4A54' : '#E0E0E0',
-    accent: colorScheme === 'dark' ? '#4DA6FF' : '#007AFF',
-    cell: colorScheme === 'dark' ? '#2A4A54' : '#F5F5F5',
-    headerCell: colorScheme === 'dark' ? '#1D3D47' : '#E0E0E0',
-  }), [colorScheme]);
+    subtext: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
+    border: colorScheme === 'dark' ? '#3A5A64' : '#E0E0E0',
+    primary: '#17A2B8',
+    success: '#4CAF50',
+    error: '#FF5252',
+    warning: '#FFC107',
+  };
 
-  const monthNames = useMemo(() => [
+  const dimensions = [
+    { id: 1, name: 'Ser', icon: 'heart-outline', color: '#FF6B6B' },
+    { id: 2, name: 'Saber', icon: 'book-outline', color: '#4ECDC4' },
+    { id: 3, name: 'Hacer', icon: 'construct-outline', color: '#45B7D1' },
+    { id: 4, name: 'Decidir', icon: 'bulb-outline', color: '#96CEB4' }
+  ];
+
+  const months = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ], []);
+  ];
 
-  const activityTypes = useMemo(() => [
-    { id: 1, name: 'Ser', icon: 'heart-outline' },
-    { id: 2, name: 'Saber', icon: 'book-outline' },
-    { id: 3, name: 'Hacer', icon: 'construct-outline' },
-    { id: 4, name: 'Decidir', icon: 'bulb-outline' }
-  ], []);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
 
-  const handlePrevMonth = useCallback(() => {
-    setCurrentDate(prev => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() - 1);
-      return newDate;
-    });
-  }, []);
-
-  const handleNextMonth = useCallback(() => {
-    setCurrentDate(prev => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + 1);
-      return newDate;
-    });
-  }, []);
-
-  const fetchTasks = useCallback(async () => {
-    if (!materiaid || !cursoid || !teacherid) {
-      Alert.alert('Error', 'Faltan parámetros para realizar la acción.');
-      return;
-    }
-    setIsLoading(true);
     try {
-      const taskData = await getActivities(materiaid, cursoid, teacherid);
-      setActividades(taskData);
+      // Modificamos la llamada para manejar el caso donde management es undefined
+      const managementId = management?.id || 1; // Valor por defecto si no existe
+
+      const [activitiesData, studentsData] = await Promise.all([
+        getActivities(materiaid, cursoid, teacherid, managementId),
+        getStudentsByCourse(cursoid)
+      ]);
+
+
+      if (activitiesData) {
+        setActivities(activitiesData);
+      }
+
+      if (studentsData && studentsData.ok) {
+        setStudents(studentsData.data);
+      }
     } catch (error) {
-      Alert.alert('Aviso', 'No hay tareas registradas para esta materia');
-      setActividades([]);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      Alert.alert('Error', 'No se pudieron cargar los datos');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [materiaid, cursoid, teacherid]);
+  }, [materiaid, cursoid, teacherid, management]);
 
   useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    fetchData();
+  }, [fetchData]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchTasks();
-    }, [fetchTasks])
-  );
-
-  const estudiantesUnicos = useMemo(() => {
-    const estudiantes = {};
-    actividades.forEach(tarea => {
-      tarea.estudiantes.forEach(est => {
-        if (!estudiantes[est.estudianteId.name]) {
-          estudiantes[est.estudianteId.name] = {};
-        }
-        estudiantes[est.estudianteId.name][tarea._id] = est.calificacion;
-      });
-    });
-    return estudiantes;
-  }, [actividades]);
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData();
+  }, [fetchData]);
 
   const filteredActivities = useMemo(() => {
-    return actividades.filter(tarea => {
-      const taskDate = new Date(tarea.fecha);
-      const matchesMonth = taskDate.getMonth() === currentDate.getMonth() && 
-                          taskDate.getFullYear() === currentDate.getFullYear();
-      const matchesType = selectedType ? tarea.tipo === selectedType : true;
-      return matchesMonth && matchesType;
+    return activities.filter(activity => {
+      const activityDate = new Date(activity.create_date);
+      const monthMatch = activityDate.getMonth() === selectedMonth;
+      const yearMatch = activityDate.getFullYear() === selectedYear;
+      const dimensionMatch = !selectedDimension || activity.dimension_id === selectedDimension;
+      
+      return monthMatch && yearMatch && dimensionMatch;
     });
-  }, [actividades, currentDate, selectedType]);
+  }, [activities, selectedMonth, selectedYear, selectedDimension]);
 
-  const calculateAverage = useCallback((studentName) => {
-    const grades = filteredActivities.map(tarea => 
-      estudiantesUnicos[studentName][tarea._id] || 0
-    );
-    const validGrades = grades.filter(grade => grade > -1);
-    if (validGrades.length === 0) return 0;
-    return (validGrades.reduce((a, b) => a + b, 0) / validGrades.length).toFixed(2);
-  }, [filteredActivities, estudiantesUnicos]);
+  const getStudentGrade = useCallback((studentId, taskId) => {
+    const activity = activities.find(a => a.id === taskId);
+    if (!activity?.assignments) return '-';
+    
+    const assignment = activity.assignments.find(a => a.student_id === studentId);
+    if (!assignment?.qualification) return '-';
+    
+    return assignment.qualification.toString().trim();
+  }, [activities]);
 
-  const handleTareaPress = useCallback((tarea) => {
-    const options = { '1': 'Ser', '2': 'Saber', '3': 'Hacer', '4': 'Decidir' };
-    Alert.alert(
-      `Detalles de ${tarea.name}`,
-      `Descripción: ${tarea.description}\nPonderación: ${tarea.ponderacion}%\nTipo: ${options[tarea.tipo]}`,
-      [
-        { text: "Cerrar", style: "cancel" },
-        {
-          text: "Ver Calificaciones",
-          onPress: () => navigation.navigate("calificaciones", { 
-            screen: 'index', 
-            params: { students: tarea.estudiantes, allTask: tarea } 
-          }),
-        },
-      ]
+  const calculateAverage = (studentId) => {
+    const grades = filteredActivities
+      .map(activity => {
+        const assignment = activity.assignments.find(a => a.student_id === studentId);
+        return assignment?.qualification ? parseFloat(assignment.qualification.trim()) : null;
+      })
+      .filter(grade => grade !== null);
+
+    if (grades.length === 0) return '-';
+    return (grades.reduce((a, b) => a + b, 0) / grades.length).toFixed(1);
+  };
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear(prev => prev - 1);
+    } else {
+      setSelectedMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear(prev => prev + 1);
+    } else {
+      setSelectedMonth(prev => prev + 1);
+    }
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
     );
-  }, [navigation]);
+  }
 
   return (
     <ParallaxScrollView
       modo={2}
-      headerBackgroundColor={{ light: colors.background, dark: colors.background }}
+      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <Image
           source={require('../../assets/images/reportes.jpg')}
           style={styles.headerImage}
         />
-      }>
+      }
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title" style={{ color: colors.text }}>
-            Registro de Calificaciones
+        {/* Cabecera */}
+        <View style={styles.header}>
+          <ThemedText style={styles.title}>Registro de Notas</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            {route.params?.materiaName || 'Materia'}
           </ThemedText>
-          <ThemedText type="subtitle" style={{ color: colors.secondaryText }}>
-            {materiaName}
-          </ThemedText>
-        </ThemedView>
-
-        <View style={[styles.monthNavigator, { backgroundColor: colors.headerCell }]}>
-          <TouchableOpacity 
-            onPress={handlePrevMonth}
-            style={styles.monthButton}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <ThemedText type="subtitle" style={{ color: colors.text }}>
-            {`${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
-          </ThemedText>
-          <TouchableOpacity 
-            onPress={handleNextMonth}
-            style={styles.monthButton}
-          >
-            <Ionicons name="chevron-forward" size={24} color={colors.text} />
-          </TouchableOpacity>
         </View>
 
+        {/* Filtros de dimensión */}
         <ScrollView 
           horizontal 
-          style={styles.typeFilter}
           showsHorizontalScrollIndicator={false}
+          style={styles.filterContainer}
         >
-          <TouchableOpacity 
-            onPress={() => setSelectedType(null)}
+          <TouchableOpacity
             style={[
-              styles.typeButton, 
-              { borderColor: colors.border },
-              !selectedType && { backgroundColor: colors.accent }
+              styles.filterButton,
+              !selectedDimension && { backgroundColor: theme.primary }
             ]}
+            onPress={() => setSelectedDimension(null)}
           >
             <Ionicons 
               name="apps-outline" 
               size={20} 
-              color={!selectedType ? '#FFFFFF' : colors.text} 
+              color={!selectedDimension ? '#FFFFFF' : theme.text} 
             />
             <ThemedText style={[
-              styles.typeText,
-              !selectedType && styles.selectedTypeText
+              styles.filterText,
+              !selectedDimension && { color: '#FFFFFF' }
             ]}>
-              Todos
+              Todas
             </ThemedText>
           </TouchableOpacity>
-          {activityTypes.map(type => (
-            <TouchableOpacity 
-              key={type.id}
-              onPress={() => setSelectedType(type.id)}
+
+          {dimensions.map(dim => (
+            <TouchableOpacity
+              key={`dimension-${dim.id}`}
               style={[
-                styles.typeButton,
-                { borderColor: colors.border },
-                selectedType === type.id && { backgroundColor: colors.accent }
+                styles.filterButton,
+                selectedDimension === dim.id && { backgroundColor: dim.color }
               ]}
+              onPress={() => setSelectedDimension(dim.id)}
             >
               <Ionicons 
-                name={type.icon} 
+                name={dim.icon} 
                 size={20} 
-                color={selectedType === type.id ? '#FFFFFF' : colors.text} 
+                color={selectedDimension === dim.id ? '#FFFFFF' : theme.text} 
               />
               <ThemedText style={[
-                styles.typeText,
-                selectedType === type.id && styles.selectedTypeText
+                styles.filterText,
+                selectedDimension === dim.id && { color: '#FFFFFF' }
               ]}>
-                {type.name}
+                {dim.name}
               </ThemedText>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
+        {/* Filtro de mes */}
+        <View style={styles.monthSelector}>
+          <TouchableOpacity onPress={handlePrevMonth}>
+            <Ionicons name="chevron-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <ThemedText style={styles.monthText}>
+            {`${months[selectedMonth]} ${selectedYear}`}
+          </ThemedText>
+          <TouchableOpacity onPress={handleNextMonth}>
+            <Ionicons name="chevron-forward" size={24} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Tabla de calificaciones */}
         <ScrollView horizontal>
-          <View style={styles.table}>
-            <View style={[styles.headerRow, { backgroundColor: colors.headerCell }]}>
-              <ThemedText style={[styles.headerCell, { color: colors.text }]}>
-                Estudiantes
-              </ThemedText>
-              {filteredActivities.map((tarea, index) => (
-                <TouchableOpacity 
-                  key={index} 
-                  onPress={() => handleTareaPress(tarea)}
-                  style={styles.headerButton}
-                >
-                  <ThemedText style={[styles.headerText, { color: colors.text }]}>
-                    {tarea.name}
+          <View style={styles.tableContainer}>
+            {/* Encabezado de la tabla */}
+            <View style={[styles.headerRow, { backgroundColor: theme.card }]}>
+              <View style={[styles.headerCell, styles.nameCell]}>
+                <ThemedText style={styles.headerText}>Estudiante</ThemedText>
+              </View>
+              {filteredActivities.map(activity => (
+                <View key={`header-activity-${activity.id}`} style={[styles.headerCell, styles.gradeCell]}>
+                  <ThemedText style={styles.headerText} numberOfLines={2}>
+                    {activity.name}
                   </ThemedText>
-                </TouchableOpacity>
+                  <ThemedText style={styles.weightText}>
+                    {activity.weight}%
+                  </ThemedText>
+                </View>
               ))}
-              <ThemedText style={[styles.headerCell, { color: colors.text }]}>
-                Promedio
-              </ThemedText>
+              <View style={[styles.headerCell, styles.gradeCell]}>
+                <ThemedText style={styles.headerText}>Promedio</ThemedText>
+              </View>
             </View>
 
-            {Object.keys(estudiantesUnicos).map((nombre, rowIndex) => (
+            {/* Filas de estudiantes */}
+            {students.map((student, index) => (
               <View 
-                key={rowIndex} 
+                key={`student-row-${student.student_id}`}
                 style={[
                   styles.row,
-                  { backgroundColor: rowIndex % 2 === 0 ? colors.cell : 'transparent' }
+                  { backgroundColor: index % 2 === 0 ? theme.background : theme.card }
                 ]}
               >
-                <ThemedText style={[styles.nameCell, { color: colors.text }]}>
-                  {nombre}
-                </ThemedText>
-                {filteredActivities.map((tarea, colIndex) => (
-                  <ThemedText 
-                    key={colIndex} 
-                    style={[styles.gradeCell, { color: colors.text }]}
-                  >
-                    {estudiantesUnicos[nombre][tarea._id] ?? '-'}
+                <View style={[styles.cell, styles.nameCell]}>
+                  <ThemedText style={styles.studentName}>
+                    {`${student.lastname || ''} ${student.second_lastname || ''} ${student.name || ''}`}
                   </ThemedText>
+                </View>
+                {filteredActivities.map(activity => (
+                  <View 
+                    key={`grade-${student.student_id}-${activity.id}`}
+                    style={[styles.cell, styles.gradeCell]}
+                  >
+                    <ThemedText style={[
+                      styles.gradeText,
+                      getStudentGrade(student.student_id, activity.id) !== '-' && {
+                        color: parseFloat(getStudentGrade(student.student_id, activity.id)) >= 51 ? 
+                          theme.success : theme.error
+                      }
+                    ]}>
+                      {getStudentGrade(student.student_id, activity.id)}
+                    </ThemedText>
+                  </View>
                 ))}
-                <ThemedText 
-                  style={[styles.averageCell, { color: colors.accent }]}
-                >
-                  {calculateAverage(nombre)}
-                </ThemedText>
+                <View style={[styles.cell, styles.gradeCell]}>
+                  <ThemedText style={[
+                    styles.averageText,
+                    { color: theme.primary }
+                  ]}>
+                    {calculateAverage(student.student_id)}
+                  </ThemedText>
+                </View>
               </View>
             ))}
           </View>
@@ -281,87 +306,110 @@ export default function ReportsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 0,
+    flex: 1,
+    padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  filterContainer: {
+    marginBottom: 20,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  filterText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tableContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerCell: {
+    padding: 12,
+    justifyContent: 'center',
+  },
+  cell: {
+    padding: 12,
+    justifyContent: 'center',
+  },
+  nameCell: {
+    width: 180,
+  },
+  gradeCell: {
+    width: 100,
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  weightText: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  studentName: {
+    fontSize: 14,
+  },
+  gradeText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  averageText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   headerImage: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
   },
-  titleContainer: {
-    marginBottom: 0,
-  },
-  monthNavigator: {
+  monthSelector: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  monthButton: {
-    padding: 8,
-  },
-  typeFilter: {
+    justifyContent: 'center',
+    paddingVertical: 10,
     marginBottom: 10,
-  },
-  typeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginRight: 2,
-  },
-  typeText: {
-    marginLeft: 8,
-  },
-  selectedTypeText: {
-    color: '#FFFFFF',
-  },
-  table: {
-    marginTop: 8,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-  },
-  headerCell: {
-    width: 120,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    fontSize: 15,
-  },
-  headerButton: {
-    width: 100,
-    alignItems: 'center',
-  },
-  headerText: {
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  nameCell: {
-    width: 120,
-    fontSize: 14,
-  },
-  gradeCell: {
-    width: 100,
-    textAlign: 'center',
-    fontSize: 14,
-  },
-  averageCell: {
-    width: 100,
-    textAlign: 'center',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
+  monthText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginHorizontal: 20,
+  }
 });

@@ -1,145 +1,89 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { StyleSheet, Image, Platform, Alert, RefreshControl, ActivityIndicator, Modal } from 'react-native';
+import { StyleSheet, Image, Alert, RefreshControl, ActivityIndicator, Modal, View, TouchableOpacity } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
-import { ButtonLink } from '../../components/ButtonLink';
 import { useGlobalState } from '../../services/UserContext';
-import { useActionSheet } from '@expo/react-native-action-sheet';
-import { useNavigation } from 'expo-router';
-import { useAuth } from '../../services/AuthProvider'; // Add this
+import { useRouter } from 'expo-router';
+import { useAuth } from '../../services/AuthProvider';
 import { getReportsByCurso } from '../../services/reports';
 import { handleError } from '../../utils/errorHandler';
+import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from 'react-native';
 
-export default function TabTwoScreen() {
-
-  const navigation = useNavigation();
-  const { showActionSheetWithOptions } = useActionSheet();
-  const { authuser } = useAuth(); // Add this
-  const { globalState, setGlobalState } = useGlobalState();
+export default function ReportsScreen() {
+  const router = useRouter();
+  const { authuser } = useAuth();
+  const { globalState } = useGlobalState();
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const colorScheme = useColorScheme();
+
+  // Colores basados en el tema
+  const theme = {
+    background: colorScheme === 'dark' ? '#1D3D47' : '#F5F5F5',
+    card: colorScheme === 'dark' ? '#2A4A54' : '#FFFFFF',
+    text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+    subtext: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
+    border: colorScheme === 'dark' ? '#3A5A64' : '#E0E0E0',
+    primary: '#17A2B8',
+    success: '#4CAF50',
+    error: '#FF5252',
+    warning: '#FFC107',
+  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      setGlobalState(prev => ({
-        ...prev,
-        assigned: authuser?.asignaciones || []
-      }));
+      // Aquí podrías actualizar los datos necesarios
+      await fetchReportsData();
+    } catch (error) {
+      handleError(error);
     } finally {
       setRefreshing(false);
     }
-  }, [authuser, setGlobalState]);
-  console.log(globalState)
-  // Add auth check
+  }, []);
+
   useEffect(() => {
     if (!authuser) {
-      navigation.replace('auth');
+      router.replace('/auth');
       return;
     }
-    
-  }, [authuser, navigation]);
+  }, [authuser]);
 
-  // Add check for globalState.assigned
-  const openActionSheet = useCallback(() => {
-    if (!globalState?.assigned) {
-      Alert.alert('Error', 'No hay materias asignadas');
-      return;
+  const handleCourseReport = async (curso) => {
+    setIsLoading(true);
+    try {
+      await getReportsByCurso(curso.professor, curso.curso._id);
+      Alert.alert('Éxito', `El reporte del curso ${curso.curso.name} ha sido descargado`);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setIsLoading(false);
     }
-    
-    const options = [];
-    const indexMap = {};
+  };
 
-    globalState.assigned.forEach((curso) => {
-      curso.materias.forEach((materia) => {
-        const formattedOption = `(${curso.curso.name}) ${materia.name}`;
-        options.push(formattedOption); 
-        indexMap[options.length - 1] = { cursoid: curso.curso._id, materiaid: materia._id, teacherid: curso.professor, materiaName: materia.name, cursoName: curso.curso.name };
-      });
-    });
-
-  
-    const cancelButtonIndex = options.length; 
-  
-    showActionSheetWithOptions(
-      {
-        options,
-        cancelButtonIndex,
-        title: `Opciones de reportes`,
-      },
-      (buttonIndex) => {
-        if (indexMap[buttonIndex]) {
-          const { cursoid, materiaid, teacherid, materiaName } = indexMap[buttonIndex];
-          setGlobalState({
-            materiaName: materiaName
-          })
-          navigation.navigate("reportes", {screen: 'index', params: {
-            materiaid,
-            cursoid,
-            teacherid
-        }});
-        }
-      }
-    );
-  }, [globalState.assigned, showActionSheetWithOptions, navigation, setGlobalState]);
-
-  const openReportTypeSheet = useCallback(() => {
-    if (!globalState?.assigned) {
-      Alert.alert('Error', 'No hay cursos asignados');
-      return;
-    }
-
-    const options = [];
-    const indexMap = {};
-
-    globalState.assigned.forEach((curso, index) => {
-      options.push(curso.curso.name);
-      indexMap[index] = {
+  const navigateToSubjectReport = (curso, materia) => {
+    router.push({
+      pathname: '/reportes',
+      params: {
+        materiaid: materia._id,
         cursoid: curso.curso._id,
-        cursoName: curso.curso.name,
         teacherid: curso.professor
-      };
-    });
-
-    const cancelButtonIndex = options.length;
-    options.push('Cancelar');
-
-    showActionSheetWithOptions(
-      {
-        options,
-        cancelButtonIndex,
-        title: 'Seleccione un curso',
-      },
-      async (buttonIndex) => {
-        if (indexMap[buttonIndex]) {
-          const { cursoid, cursoName, teacherid } = indexMap[buttonIndex];
-          setIsLoading(true);
-          try {
-            await getReportsByCurso(teacherid, cursoid);
-            Alert.alert('Éxito', `El reporte del curso ${cursoName} ha sido descargado`);
-          } catch (error) {
-            handleError(error);
-          } finally {
-            setIsLoading(false);
-          }
-        }
       }
-    );
-  }, [globalState?.assigned, showActionSheetWithOptions, navigation]);
+    });
+  };
 
-  // Add loading modal component
   const LoadingModal = () => (
     <Modal transparent visible={isLoading}>
-      <ThemedView style={styles.modalContainer}>
+      <View style={styles.modalContainer}>
         <ThemedView style={styles.loadingBox}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={theme.primary} />
           <ThemedText style={styles.loadingText}>
             Generando reporte...
           </ThemedText>
         </ThemedView>
-      </ThemedView>
+      </View>
     </Modal>
   );
 
@@ -147,7 +91,7 @@ export default function TabTwoScreen() {
     <>
       <ParallaxScrollView
         modo={2}
-        headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
+        headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
         headerImage={
           <Image
             source={require('../../assets/images/reportes.jpg')}
@@ -155,22 +99,50 @@ export default function TabTwoScreen() {
           />
         }
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh}
-          />
-        }>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Reportes</ThemedText>
-          <ThemedText type="default">
-          Gestión {globalState.management}
-        </ThemedText>
-        </ThemedView>
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <ThemedView style={styles.container}>
+          {/* Cabecera */}
+          <View style={styles.header}>
+            <ThemedText type="title" style={styles.title}>Reportes</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Gestión {globalState.management?.name || 'Actual'}
+            </ThemedText>
+          </View>
 
-        <ButtonLink text="Registro" modo='large' onPress={() => openActionSheet()}  color='info' style={{marginVertical: 0}}/>
-        <ButtonLink text="Generar Informe Trimestral" modo='large' onPress={() => openReportTypeSheet()} color='info' style={{marginVertical: 0}} disabled={isLoading}/>
-        {/* <ButtonLink text="Imprimir" modo='large' color='info' style={{marginVertical: 0}}/> */}
-     
+          {/* Sección de Cursos */}
+          <ThemedText style={styles.sectionTitle}>Mis Cursos</ThemedText>
+          
+          {globalState.assigned?.map((curso, index) => (
+            <ThemedView key={index} style={styles.courseCard}>
+              <View style={styles.courseHeader}>
+                <ThemedText style={styles.courseName}>{curso.curso.name}</ThemedText>
+                <TouchableOpacity 
+                  style={styles.downloadButton}
+                  onPress={() => handleCourseReport(curso)}
+                >
+                  <Ionicons name="download-outline" size={24} color={theme.primary} />
+                  <ThemedText style={styles.downloadText}>Informe Trimestral</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.subjectsContainer}>
+                {curso.materias.map((materia, subIndex) => (
+                  <TouchableOpacity
+                    key={subIndex}
+                    style={styles.subjectButton}
+                    onPress={() => navigateToSubjectReport(curso, materia)}
+                  >
+                    <Ionicons name="document-text-outline" size={20} color={theme.text} />
+                    <ThemedText style={styles.subjectText}>{materia.name}</ThemedText>
+                    <Ionicons name="chevron-forward" size={20} color={theme.subtext} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ThemedView>
+          ))}
+        </ThemedView>
       </ParallaxScrollView>
       <LoadingModal />
     </>
@@ -178,16 +150,79 @@ export default function TabTwoScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    width: '100%',
-    height: '100%'
+  container: {
+    padding: 16,
   },
-  titleContainer: {
-    width: '100%',
+  header: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  courseCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  courseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  courseName: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    marginBottom: 0,
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#17A2B8',
+  },
+  downloadText: {
+    fontSize: 14,
+    color: '#17A2B8',
+    fontWeight: '500',
+  },
+  subjectsContainer: {
+    gap: 8,
+  },
+  subjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+  },
+  subjectText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   modalContainer: {
     flex: 1,
@@ -196,13 +231,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   loadingBox: {
-    padding: 20,
-    borderRadius: 10,
+    padding: 24,
+    borderRadius: 16,
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#fff',
+    gap: 12,
+    minWidth: 200,
   },
   loadingText: {
-    marginTop: 10,
+    fontSize: 16,
   },
 });

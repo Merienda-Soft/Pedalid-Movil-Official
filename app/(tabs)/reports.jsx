@@ -154,7 +154,7 @@ export default function ReportsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: 0,
   },
   header: {
     marginBottom: 24,
@@ -175,10 +175,10 @@ const styles = StyleSheet.create({
   },
   courseCard: {
     borderRadius: 12,
-    padding: 16,
+    padding: 10,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
+    elevation: 10,
+    shadowColor: 'cyan',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,

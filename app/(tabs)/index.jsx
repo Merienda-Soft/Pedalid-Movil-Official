@@ -17,6 +17,7 @@ import { getTeacherByEmail } from '../../services/teacher';
 import { getManagements } from '../../services/management';
 import { handleError } from '../../utils/errorHandler';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useColorScheme } from 'react-native';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -28,6 +29,20 @@ export default function HomeScreen() {
   const [managements, setManagements] = useState([]);
   const [selectedManagement, setSelectedManagement] = useState(null);
   const [expandedCourseId, setExpandedCourseId] = useState(null);
+  const colorScheme = useColorScheme();
+
+  const theme = {
+    background: colorScheme === 'dark' ? '#1D3D47' : '#F5F5F5',
+    surface: colorScheme === 'dark' ? 'transparent' : '#FFFFFF',
+    card: colorScheme === 'dark' ? '#2A4A54' : '#FFFFFF',
+    text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+    subtext: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
+    border: colorScheme === 'dark' ? '#3A5A64' : '#E0E0E0',
+    primary: '#17A2B8',
+    success: '#4CAF50',
+    error: '#FF5252',
+    warning: '#FFC107',
+  };
 
   // Función para cargar las gestiones
   const fetchManagements = useCallback(async () => {
@@ -222,8 +237,8 @@ export default function HomeScreen() {
   const renderCursos = useMemo(() => {
     if (!user?.asignaciones?.length) {
       return (
-        <ThemedView style={styles.emptyContainer}>
-          <ThemedText style={styles.emptyText}>
+        <ThemedView style={[styles.emptyContainer, { backgroundColor: theme.surface }]}>
+          <ThemedText style={[styles.emptyText, { color: theme.subtext }]}>
             No tienes cursos asignados
           </ThemedText>
         </ThemedView>
@@ -231,7 +246,7 @@ export default function HomeScreen() {
     }
 
     return (
-      <View style={styles.coursesContainer}>
+      <View style={[styles.coursesContainer, { backgroundColor: theme.surface }]}>
         {user.asignaciones.map((curso) => {
           const isExpanded = expandedCourseId === curso.curso._id;
           
@@ -247,7 +262,15 @@ export default function HomeScreen() {
                 activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={isExpanded ? ['#149AAF', '#0D7A8C'] : ['#17A2B8', '#1590A3']}
+                  colors={
+                    colorScheme === 'dark' 
+                      ? isExpanded 
+                        ? ['#1D3D47', '#162D35']  // Colores más oscuros para modo dark cuando está expandido
+                        : ['#234751', '#1D3D47']  // Colores más oscuros para modo dark cuando no está expandido
+                      : isExpanded 
+                        ? ['#149AAF', '#0D7A8C']  // Mantener colores originales para modo light cuando está expandido
+                        : ['#17A2B8', '#1590A3']  // Mantener colores originales para modo light cuando no está expandido
+                  }
                   style={[styles.courseCard, isExpanded && styles.courseCardExpanded]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -285,7 +308,7 @@ export default function HomeScreen() {
                 <AnimatedView 
                   animation="fadeInDown"
                   duration={300}
-                  style={styles.materiasContainer}
+                  style={[styles.materiasContainer, { backgroundColor: theme.card }]}
                 >
                   {curso.materias.map((materia, index) => (
                     <TouchableOpacity 
@@ -295,20 +318,20 @@ export default function HomeScreen() {
                       activeOpacity={0.7}
                     >
                       <LinearGradient
-                        colors={['#FFFFFF', '#F8FAFB']}
+                        colors={[theme.card, theme.background]}
                         style={styles.materiaContent}
                       >
-                        <View style={styles.materiaIconWrapper}>
-                          <Ionicons name="book" size={22} color="#17A2B8" />
+                        <View style={[styles.materiaIconWrapper, { backgroundColor: colorScheme === 'dark' ? 'rgba(23, 162, 184, 0.2)' : 'rgba(23, 162, 184, 0.1)' }]}>
+                          <Ionicons name="book" size={22} color={theme.primary} />
                         </View>
-                        <ThemedText style={styles.materiaName}>
+                        <ThemedText style={[styles.materiaName, { color: theme.text }]}>
                           {materia.name}
                         </ThemedText>
                         <View style={styles.materiaArrow}>
                           <Ionicons 
                             name="arrow-forward-circle" 
                             size={24} 
-                            color="#17A2B8" 
+                            color={theme.primary} 
                           />
                         </View>
                       </LinearGradient>
@@ -355,8 +378,8 @@ export default function HomeScreen() {
       </ThemedView>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#17A2B8" />
+        <View style={[styles.loadingContainer, { backgroundColor: theme.surface }]}>
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : (
         renderCursos
@@ -383,7 +406,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
   },
   titleContainer: {
@@ -391,8 +413,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 0,
+    paddingVertical: 5,
   },
   reactLogo: {
     height: '100%',
@@ -461,7 +483,6 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '0deg' }],
   },
   materiasContainer: {
-    backgroundColor: '#F8F9FA',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     padding: 12,
@@ -486,9 +507,30 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
-    color: '#2C3E50',
   },
   materiaArrow: {
     opacity: 0.8,
+  },
+  tableContainer: {
+    borderRadius: 0,
+    overflow: 'hidden',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1,
   },
 });

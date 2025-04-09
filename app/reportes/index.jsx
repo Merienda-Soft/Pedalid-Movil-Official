@@ -243,9 +243,6 @@ export default function ReportsScreen() {
                   <ThemedText style={styles.headerText} numberOfLines={2}>
                     {activity.name}
                   </ThemedText>
-                  <ThemedText style={styles.weightText}>
-                    {activity.weight}%
-                  </ThemedText>
                 </View>
               ))}
               <View style={[styles.headerCell, styles.gradeCell]}>
@@ -347,7 +344,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 10,
     marginRight: 10,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.1)',

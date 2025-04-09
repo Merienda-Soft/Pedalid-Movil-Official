@@ -2,7 +2,7 @@ import { API_BASE_URL } from "./apiConfig";
 
 export const getManagements = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/management`, {
+        const response = await fetch(`${API_BASE_URL}/managements`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -24,7 +24,7 @@ export const getManagements = async () => {
 
 export const getManagementActive = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/management/active`, {
+        const response = await fetch(`${API_BASE_URL}/managements/active`, {
             method: 'GET',
         });
 

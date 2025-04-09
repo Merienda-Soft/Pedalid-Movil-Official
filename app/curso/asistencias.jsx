@@ -406,7 +406,7 @@ export default function AttendanceScreen() {
                   style={[styles.studentCard, {borderLeftColor: statusColor, borderLeftWidth: 3}]}
                 >
                   <View style={styles.studentRow}>
-                    <ThemedText numberOfLines={1} style={styles.studentName}>
+                    <ThemedText style={styles.studentName}>
                       {student.lastname} {student.second_lastname || ''} {student.name}
                     </ThemedText>
                     
@@ -422,7 +422,7 @@ export default function AttendanceScreen() {
                         <Text style={{ 
                           color: currentStatus === ATTENDANCE_STATES.PRESENT ? '#FFFFFF' : theme.success,
                           fontWeight: 'bold',
-                          fontSize: 14
+                          fontSize: 16
                         }}>P</Text>
                       </TouchableOpacity>
                       
@@ -437,7 +437,7 @@ export default function AttendanceScreen() {
                         <Text style={{ 
                           color: currentStatus === ATTENDANCE_STATES.ABSENT ? '#FFFFFF' : theme.error,
                           fontWeight: 'bold',
-                          fontSize: 14
+                          fontSize: 16
                         }}>A</Text>
                       </TouchableOpacity>
                       
@@ -452,7 +452,7 @@ export default function AttendanceScreen() {
                         <Text style={{ 
                           color: currentStatus === ATTENDANCE_STATES.JUSTIFIED ? '#FFFFFF' : theme.warning,
                           fontWeight: 'bold',
-                          fontSize: 14
+                          fontSize: 16
                         }}>J</Text>
                       </TouchableOpacity>
                     </View>
@@ -543,32 +543,35 @@ const styles = StyleSheet.create({
   },
   studentCard: {
     width: '100%',
-    padding: 8,
-    marginBottom: 6,
+    padding: 10,
+    marginBottom: 8,
     borderRadius: 5,
   },
   studentRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   studentName: {
-    fontSize: 18,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
     flex: 1,
-    marginRight: 10,
+    marginRight: 12,
+    flexWrap: 'wrap',
+    paddingRight: 5,
   },
   attendanceOptions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    alignSelf: 'center',
   },
   attendanceButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 0,
+    width: 34,
+    height: 34,
+    borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
   saveButton: {
     flexDirection: 'row',

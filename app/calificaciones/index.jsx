@@ -18,30 +18,54 @@ const StudentListItem = ({ student, taskId, colorScheme, navigateToTaskDetail })
     border: colorScheme === 'dark' ? '#2C2C2E' : '#E0E0E0',
     icon: colorScheme === 'dark' ? '#FFFFFF' : '#17A2B8',
     success: '#4CAF50',
-    pending: '#FF9800'
+    pending: '#FF9800',
+    evaluated: '#9C27B0'  // Color morado para tareas evaluadas
   };
 
-  // Determinar si ha entregado la tarea
-  const hasSubmitted = student.status === 1;
+  // Determinar el estado de la tarea
+  const getTaskStatus = () => {
+    switch (student.status) {
+      case 2:
+        return {
+          color: colors.evaluated,
+          text: 'Evaluada',
+          style: styles.evaluatedItem
+        };
+      case 1:
+        return {
+          color: colors.success,
+          text: 'Entregada',
+          style: styles.submittedItem
+        };
+      default:
+        return {
+          color: colors.pending,
+          text: 'Pendiente',
+          style: styles.pendingItem
+        };
+    }
+  };
+
+  const status = getTaskStatus();
 
   return (
     <ThemedView style={[
       styles.studentListItem,
-      hasSubmitted ? styles.submittedItem : styles.pendingItem
+      status.style
     ]}>
       <View style={styles.studentInfo}>
         <View style={styles.nameRow}>
           <View style={[
             styles.statusIndicator, 
-            { backgroundColor: hasSubmitted ? colors.success : colors.pending }
+            { backgroundColor: status.color }
           ]} />
           <ThemedText style={styles.studentName}>{student.nombre}</ThemedText>
         </View>
         <ThemedText style={[
           styles.submissionStatus, 
-          { color: hasSubmitted ? colors.success : colors.pending }
+          { color: status.color }
         ]}>
-          {hasSubmitted ? 'Entregada' : 'Pendiente'}
+          {status.text}
         </ThemedText>
       </View>
       <TouchableOpacity 
@@ -49,7 +73,7 @@ const StudentListItem = ({ student, taskId, colorScheme, navigateToTaskDetail })
         style={styles.iconButton}
       >
         <Ionicons 
-          name={hasSubmitted ? "document-text" : "document-text-outline"} 
+          name={student.status > 0 ? "document-text" : "document-text-outline"} 
           size={24} 
           color={colors.icon} 
         />
@@ -96,9 +120,9 @@ export default function TasksScreenCalification() {
       try {
         setIsLoading(true);
         const response = await getActivityByIdwithassignments(idTask);
+        setTaskData(response.task);
         
         if (response.ok && response.task) {
-          setTaskData(response.task);
           
           // Transformar los assignments a el formato de estudiantes
           const estudiantesTransformados = response.task.assignments.map(assignment => ({
@@ -144,7 +168,6 @@ export default function TasksScreenCalification() {
 
       
       const response = await updateActivity(idTask, studentsData);
-      console.log(response);
       if (!response.ok) throw new Error('Error al guardar'); 
       
       setChangeCount(0);
@@ -395,6 +418,10 @@ const styles = StyleSheet.create({
   pendingItem: {
     borderLeftWidth: 3,
     borderLeftColor: '#FF9800',
+  },
+  evaluatedItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#9C27B0', // Color morado para tareas evaluadas
   },
   submissionStatus: {
     fontSize: 12,

@@ -30,6 +30,7 @@ export default function TaskDetailProf() {
     primary: '#17A2B8',
     error: '#FF5252',
     success: '#4CAF50',
+    evaluated: '#9C27B0',
   };
 
   useEffect(() => {
@@ -73,10 +74,34 @@ export default function TaskDetailProf() {
   };
 
   const handleSaveQualification = async () => {
+    // Si está evaluada (status 2), mostrar confirmación primero
+    if (assignment?.status === 2) {
+      Alert.alert(
+        'Reevaluar Tarea',
+        '¿Desea reevaluar la nota de esta tarea?',
+        [
+          { 
+            text: 'No', 
+            style: 'cancel'
+          },
+          {
+            text: 'Sí',
+            onPress: async () => {
+              await saveQualification();
+            }
+          }
+        ]
+      );
+    } else {
+      // Si no está evaluada, guardar directamente
+      await saveQualification();
+    }
+  };
+
+  const saveQualification = async () => {
     try {
       setSaving(true);
       
-      // Formato de datos para la API
       const studentsData = [
         {
           student_id: studentId,
@@ -112,6 +137,28 @@ export default function TaskDetailProf() {
   const studentName = assignment?.student?.person 
     ? `${assignment.student.person.name} ${assignment.student.person.lastname} ${assignment.student.person.second_lastname || ''}` 
     : 'Estudiante';
+
+  const getSubmissionStatus = (status) => {
+    switch (status) {
+      case 2:
+        return {
+          text: 'Evaluada',
+          color: theme.evaluated || '#9C27B0'
+        };
+      case 1:
+        return {
+          text: 'Entregada',
+          color: theme.success
+        };
+      default:
+        return {
+          text: 'No entregada',
+          color: theme.error
+        };
+    }
+  };
+
+  const status = getSubmissionStatus(assignment?.status);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.surface }]}>
@@ -162,10 +209,10 @@ export default function TaskDetailProf() {
                 {studentName}
               </ThemedText>
               <ThemedText style={[styles.submissionStatus, { 
-                color: isSubmitted ? theme.success : theme.error,
+                color: status.color,
                 marginTop: 8 
               }]}>
-                Estado: {isSubmitted ? 'Entregada' : 'No entregada'}
+                Estado: {status.text}
               </ThemedText>
             </View>
 
@@ -218,7 +265,7 @@ export default function TaskDetailProf() {
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
                     <ThemedText style={styles.saveButtonText}>
-                      Guardar
+                      {assignment?.status === 2 ? 'Reevaluar' : 'Guardar'}
                     </ThemedText>
                   )}
                 </TouchableOpacity>
@@ -226,7 +273,7 @@ export default function TaskDetailProf() {
             </View>
 
             {/* Archivos entregados (si hay) */}
-            {isSubmitted && submittedFiles.length > 0 && (
+            {(assignment?.status === 1 || assignment?.status === 2) && submittedFiles.length > 0 && (
               <View style={[styles.card, { backgroundColor: theme.card }]}>
                 <ThemedText style={styles.sectionTitle}>Archivos Entregados</ThemedText>
                 

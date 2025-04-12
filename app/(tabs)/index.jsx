@@ -8,8 +8,7 @@ import { ThemedView } from '../../components/ThemedView';
 import { Collapsible } from '../../components/Collapsible';
 import { CollapsibleOptions } from '../../components/CollapsibleOptions';
 import { InputComboBox } from '../../components/InputComboBox';
-import { useFocusEffect } from '@react-navigation/native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useNavigationState } from '@react-navigation/native';
 import { useUser } from '../../services/UserContext';
 import { useGlobalState } from '../../services/UserContext';
 import { useAuth } from '../../services/AuthProvider';
@@ -21,7 +20,7 @@ import { useColorScheme } from 'react-native';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const { authuser } = useAuth();
+  const { authuser, logout } = useAuth();
   const { globalState, setGlobalState } = useGlobalState();
   const { user, setUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
@@ -233,19 +232,71 @@ export default function HomeScreen() {
     });
   }, [user, setGlobalState, navigation, selectedManagement]);
 
+  // Agregar esta función para manejar el logout
+  const handleLogout = async () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro que deseas cerrar sesión?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Sí, cerrar sesión',
+          onPress: async () => {
+            await logout();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'auth' }],
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  // Agregar este efecto para prevenir el retorno al login
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (authuser) {
+        // Prevenir la navegación por defecto
+        e.preventDefault();
+        
+        // Si el usuario intenta salir de la app
+        if (e.data.action.type === 'GO_BACK') {
+          Alert.alert(
+            'Salir',
+            '¿Deseas salir de la aplicación?',
+            [
+              { text: 'No', style: 'cancel', onPress: () => {} },
+              { 
+                text: 'Sí', 
+                style: 'destructive',
+                onPress: () => navigation.dispatch(e.data.action)
+              },
+            ]
+          );
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, authuser]);
+
   // Renderizado de la lista de cursos
   const renderCursos = useMemo(() => {
     if (!user?.asignaciones?.length) {
-      return (
+    return (
         <ThemedView style={[styles.emptyContainer, { backgroundColor: theme.surface }]}>
           <ThemedText style={[styles.emptyText, { color: theme.subtext }]}>
             No tienes cursos asignados
           </ThemedText>
         </ThemedView>
-      );
-    }
-
-    return (
+    );
+  }
+  
+  return (
       <View style={[styles.coursesContainer, { backgroundColor: theme.surface }]}>
         {user.asignaciones.map((curso) => {
           const isExpanded = expandedCourseId === curso.curso._id;
@@ -347,25 +398,33 @@ export default function HomeScreen() {
   }, [user?.asignaciones, expandedCourseId, handleMateriaSelect]);
 
   return (
-    <ParallaxScrollView
-      modo={2}
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('../../assets/images/cursos.jpg')}
-          style={styles.reactLogo}
-        />
+      <ParallaxScrollView
+        modo={2}
+        headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+        headerImage={
+          <Image
+            source={require('../../assets/images/cursos.jpg')}
+            style={styles.reactLogo}
+          />
+        }
+      headerRight={
+        <TouchableOpacity 
+          onPress={handleLogout}
+          style={styles.logoutButton}
+        >
+          <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       }
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Cursos</ThemedText>
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText type="title">Cursos</ThemedText>
         <ThemedText type="default">
           Gestión {globalState.management?.management}
         </ThemedText>
-      </ThemedView>
+        </ThemedView>
 
       <ThemedView>
         <InputComboBox
@@ -384,7 +443,7 @@ export default function HomeScreen() {
       ) : (
         renderCursos
       )}
-    </ParallaxScrollView>
+      </ParallaxScrollView>
   );
 }
 
@@ -532,5 +591,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 10,
     borderWidth: 1,
+  },
+  logoutButton: {
+    padding: 10,
+    marginRight: 10,
   },
 });

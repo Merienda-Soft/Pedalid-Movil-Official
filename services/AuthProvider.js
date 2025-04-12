@@ -7,6 +7,15 @@ export const AuthProvider = ({ children }) => {
   const [authuser, setauthUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const logout = async () => {
+    try {
+      setauthUser(null);
+      // Aquí puedes agregar cualquier otra lógica de limpieza necesaria
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -29,7 +38,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ authuser, setauthUser }}>
+    <AuthContext.Provider value={{ authuser, setauthUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

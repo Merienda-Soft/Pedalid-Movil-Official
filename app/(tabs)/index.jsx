@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, BackHandler } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { View as AnimatedView } from 'react-native-animatable';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
@@ -232,7 +232,7 @@ export default function HomeScreen() {
     });
   }, [user, setGlobalState, navigation, selectedManagement]);
 
-  // Agregar esta función para manejar el logout
+  // Función para manejar el logout
   const handleLogout = async () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -246,6 +246,12 @@ export default function HomeScreen() {
           text: 'Sí, cerrar sesión',
           onPress: async () => {
             await logout();
+            // Limpiar todos los estados
+            setUser(null);
+            setGlobalState({});
+            setSelectedManagement(null);
+            setManagements([]);
+            // Redirigir al login
             navigation.reset({
               index: 0,
               routes: [{ name: 'auth' }],
@@ -256,33 +262,34 @@ export default function HomeScreen() {
     );
   };
 
-  // Agregar este efecto para prevenir el retorno al login
+  // Modificar el efecto para manejar el botón de retroceso
   useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (authuser) {
-        // Prevenir la navegación por defecto
-        e.preventDefault();
-        
-        // Si el usuario intenta salir de la app
-        if (e.data.action.type === 'GO_BACK') {
-          Alert.alert(
-            'Salir',
-            '¿Deseas salir de la aplicación?',
-            [
-              { text: 'No', style: 'cancel', onPress: () => {} },
-              { 
-                text: 'Sí', 
-                style: 'destructive',
-                onPress: () => navigation.dispatch(e.data.action)
-              },
-            ]
-          );
-        }
-      }
-    });
+    const backAction = () => {
+      Alert.alert(
+        'Salir',
+        '¿Deseas salir de la aplicación?',
+        [
+          { 
+            text: 'No', 
+            style: 'cancel'
+          },
+          { 
+            text: 'Sí',
+            style: 'destructive',
+            onPress: () => BackHandler.exitApp()
+          }
+        ]
+      );
+      return true;
+    };
 
-    return unsubscribe;
-  }, [navigation, authuser]);
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   // Renderizado de la lista de cursos
   const renderCursos = useMemo(() => {
@@ -407,42 +414,47 @@ export default function HomeScreen() {
             style={styles.reactLogo}
           />
         }
-      headerRight={
-        <TouchableOpacity 
-          onPress={handleLogout}
-          style={styles.logoutButton}
-        >
-          <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      }
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+        }
+      >
         <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Cursos</ThemedText>
-        <ThemedText type="default">
-          Gestión {globalState.management?.management}
-        </ThemedText>
+          <View>
+            <ThemedText type="title">Cursos</ThemedText>
+            <ThemedText type="default">
+              Gestión {globalState.management?.management}
+            </ThemedText>
+          </View>
+          <TouchableOpacity 
+            onPress={handleLogout}
+            style={styles.logoutButton}
+          >
+            <View style={styles.logoutButtonContent}>
+              <Ionicons name="log-out-outline" size={24} color={theme.error} />
+              <ThemedText style={[styles.logoutText, { color: theme.error }]}>
+                Cerrar Sesión
+              </ThemedText>
+            </View>
+          </TouchableOpacity>
         </ThemedView>
 
-      <ThemedView>
-        <InputComboBox
-          label="Gestión Académica"
-          selectedValue={selectedManagement?.management}
-          onValueChange={handleManagementChange}
-          options={managementOptions}
-          style={styles.managementSelect}
-        />
-      </ThemedView>
+        <ThemedView>
+          <InputComboBox
+            label="Gestión Académica"
+            selectedValue={selectedManagement?.management}
+            onValueChange={handleManagementChange}
+            options={managementOptions}
+            style={styles.managementSelect}
+          />
+        </ThemedView>
 
-      {isLoading ? (
-        <View style={[styles.loadingContainer, { backgroundColor: theme.surface }]}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      ) : (
-        renderCursos
-      )}
+        {isLoading ? (
+          <View style={[styles.loadingContainer, { backgroundColor: theme.surface }]}>
+            <ActivityIndicator size="large" color={theme.primary} />
+          </View>
+        ) : (
+          renderCursos
+        )}
       </ParallaxScrollView>
   );
 }
@@ -473,7 +485,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 0,
-    paddingVertical: 5,
+    paddingVertical: 0,
+    marginBottom: 8,
   },
   reactLogo: {
     height: '100%',
@@ -593,7 +606,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   logoutButton: {
-    padding: 10,
-    marginRight: 10,
+    backgroundColor: 'rgba(255, 82, 82, 0.1)',
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#FF5252',
+  },
+  logoutButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

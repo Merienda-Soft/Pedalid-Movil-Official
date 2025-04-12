@@ -19,16 +19,16 @@ export default function CursoLayout() {
         options={{
           title: 'Tareas',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'document' : 'document-outline'} color={color} />
+            <TabBarIcon name={focused ? 'list-circle' : 'list-circle-outline'} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="newTask"
         options={{
-          title: 'Nueva Tarea',
+          title: 'Nueva',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'add' : 'add-outline'} color={color} />
+            <TabBarIcon name={focused ? 'add-circle' : 'add-circle-outline'} color={color} />
           ),
         }}
       />
@@ -37,7 +37,16 @@ export default function CursoLayout() {
         options={{
           title: 'Asistencia',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'clipboard' : 'clipboard-outline'} color={color} />
+            <TabBarIcon name={focused ? 'people' : 'people-outline'} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="supportMaterial"
+        options={{
+          title: 'Material',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'folder' : 'folder-outline'} color={color} />
           ),
         }}
       />

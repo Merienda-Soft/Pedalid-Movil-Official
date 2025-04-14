@@ -29,6 +29,7 @@ export default function HomeScreen() {
   const [selectedManagement, setSelectedManagement] = useState(null);
   const [expandedCourseId, setExpandedCourseId] = useState(null);
   const colorScheme = useColorScheme();
+  const navigationState = useNavigationState(state => state);
 
   const theme = {
     background: colorScheme === 'dark' ? '#1D3D47' : '#F5F5F5',
@@ -262,34 +263,40 @@ export default function HomeScreen() {
     );
   };
 
-  // Modificar el efecto para manejar el botón de retroceso
-  useEffect(() => {
-    const backAction = () => {
-      Alert.alert(
-        'Salir',
-        '¿Deseas salir de la aplicación?',
-        [
-          { 
-            text: 'No', 
-            style: 'cancel'
-          },
-          { 
-            text: 'Sí',
-            style: 'destructive',
-            onPress: () => BackHandler.exitApp()
-          }
-        ]
+  // Reemplazar el useEffect del backHandler por useFocusEffect
+  useFocusEffect(
+    useCallback(() => {
+      const backAction = () => {
+        Alert.alert(
+          'Salir',
+          '¿Deseas salir de la aplicación?',
+          [
+            { 
+              text: 'No', 
+              style: 'cancel'
+            },
+            { 
+              text: 'Sí',
+              style: 'destructive',
+              onPress: () => BackHandler.exitApp()
+            }
+          ]
+        );
+        return true;
+      };
+
+      // Solo agregar el listener cuando esta pantalla está enfocada
+      const backHandler = BackHandler.addEventListener(
+        'hardwareBackPress',
+        backAction
       );
-      return true;
-    };
 
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      backAction
-    );
-
-    return () => backHandler.remove();
-  }, []);
+      // Limpiar el listener cuando la pantalla pierde el foco
+      return () => {
+        backHandler.remove();
+      };
+    }, [])
+  );
 
   // Renderizado de la lista de cursos
   const renderCursos = useMemo(() => {

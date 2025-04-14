@@ -30,6 +30,19 @@ export default function StudentTasksLayout() {
         }}
         initialParams={params}
       />
+      <Tabs.Screen
+        name="supportContent"
+        options={{
+          title: "Material de Apoyo",
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon
+              name={focused ? "document-text" : "document-text-outline"}
+              color={color}
+            />
+          ),
+        }}
+        initialParams={params}
+      />
     </Tabs>
   );
 }

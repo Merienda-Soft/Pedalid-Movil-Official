@@ -46,7 +46,7 @@ export default function ReportsScreen() {
   const months = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
+  ]; 
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -158,12 +158,12 @@ export default function ReportsScreen() {
           </View>
           <ThemedText style={styles.subtitle}>
             {materiaName}
-          </ThemedText>
-        </View>
+        </ThemedText>
+      </View>
 
         {/* Selector de mes actualizado */}
         <View style={[styles.monthNavigator, { backgroundColor: theme.card }]}>
-          <TouchableOpacity 
+        <TouchableOpacity 
             onPress={() => setSelectedMonth(prev => prev === 0 ? 11 : prev - 1)}
             style={styles.monthButton}
           >
@@ -226,8 +226,8 @@ export default function ReportsScreen() {
               ]}>
                 {dim.name}
               </ThemedText>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            ))}
         </ScrollView>
 
         {/* Tabla de calificaciones */}
@@ -243,7 +243,7 @@ export default function ReportsScreen() {
                   <ThemedText style={styles.headerText} numberOfLines={2}>
                     {activity.name}
                   </ThemedText>
-                </View>
+          </View>
               ))}
               <View style={[styles.headerCell, styles.gradeCell]}>
                 <ThemedText style={styles.headerText}>Promedio</ThemedText>
@@ -288,10 +288,10 @@ export default function ReportsScreen() {
                     {calculateAverage(student.student_id)}
                   </ThemedText>
                 </View>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
       </ThemedView>
     </ParallaxScrollView>
   );

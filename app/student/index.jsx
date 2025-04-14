@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, useColorScheme } from 'react-native';
+import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, useColorScheme, BackHandler } from 'react-native';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function StudentHomeScreen() {
   const navigation = useNavigation();
-  const { authuser } = useAuth();
+  const { authuser, logout } = useAuth();
   const { globalState, setGlobalState } = useGlobalState();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,6 +34,7 @@ export default function StudentHomeScreen() {
     subtext: colorScheme === 'dark' ? '#8E8E93' : '#666666',
     border: colorScheme === 'dark' ? '#2C2C2E' : 'rgba(23, 162, 184, 0.1)',
     primary: '#17A2B8',
+    error: '#FF5252',
   };
 
   const fetchActiveManagement = useCallback(async () => {
@@ -195,6 +196,63 @@ export default function StudentHomeScreen() {
     );
   }, [authuser?.role, selectedStudent, studentData, navigation, activeManagement, theme]);
 
+  const handleLogout = async () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro que deseas cerrar sesión?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Sí, cerrar sesión',
+          onPress: async () => {
+            await logout();
+            setGlobalState({});
+            setActiveManagement(null);
+            setStudentData(null);
+            setSelectedStudent(null);
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'auth' }],
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const backAction = () => {
+        Alert.alert(
+          'Salir',
+          '¿Deseas salir de la aplicación?',
+          [
+            { 
+              text: 'No', 
+              style: 'cancel'
+            },
+            { 
+              text: 'Sí',
+              style: 'destructive',
+              onPress: () => BackHandler.exitApp()
+            }
+          ]
+        );
+        return true;
+      };
+
+      const backHandler = BackHandler.addEventListener(
+        'hardwareBackPress',
+        backAction
+      );
+
+      return () => backHandler.remove();
+    }, [])
+  );
+
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -222,10 +280,23 @@ export default function StudentHomeScreen() {
       style={{ backgroundColor: theme.surface }}
     >
       <ThemedView style={[styles.titleContainer, { backgroundColor: theme.surface }]}>
-        <ThemedText type="title" style={{ color: theme.text }}>Cursos</ThemedText>
-        <ThemedText type="default" style={{ color: theme.subtext }}>
-          Gestión {activeManagement?.management}
-        </ThemedText>
+        <View>
+          <ThemedText type="title" style={{ color: theme.text }}>Cursos</ThemedText>
+          <ThemedText type="default" style={{ color: theme.subtext }}>
+            Gestión {activeManagement?.management}
+          </ThemedText>
+        </View>
+        <TouchableOpacity 
+          onPress={handleLogout}
+          style={styles.logoutButton}
+        >
+          <View style={styles.logoutButtonContent}>
+            <Ionicons name="log-out-outline" size={24} color={theme.error} />
+            <ThemedText style={[styles.logoutText, { color: theme.error }]}>
+              Cerrar Sesión
+            </ThemedText>
+          </View>
+        </TouchableOpacity>
       </ThemedView>
 
       {authuser?.role === 'tutor' && studentData && (
@@ -276,8 +347,10 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 0,
+    alignItems: 'center',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    marginBottom: 8,
   },
   reactLogo: {
     height: '100%',
@@ -385,5 +458,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#34495E',
     fontWeight: '500',
+  },
+  logoutButton: {
+    backgroundColor: 'rgba(255, 82, 82, 0.1)',
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#FF5252',
+  },
+  logoutButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

@@ -262,56 +262,56 @@ export default function TaskDetailScreen() {
             />
           }
         >
-          {/* Encabezado de la tarea */}
+      {/* Encabezado de la tarea */}
           <View style={[styles.headerFixed, { backgroundColor: theme.surface }]}>
-            <View style={styles.header}>
-              <ThemedText style={styles.title}>{task?.name}</ThemedText>
-              <View style={styles.statusContainer}>
-                <View style={[styles.statusIndicator, { 
-                  backgroundColor: isLate ? theme.error : theme.success 
-                }]} />
-                <ThemedText style={[styles.statusText, { 
-                  color: isLate ? theme.error : theme.success 
-                }]}>
-                  {isLate ? 'Vencida' : 'En tiempo'}
-                </ThemedText>
+      <View style={styles.header}>
+        <ThemedText style={styles.title}>{task?.name}</ThemedText>
+        <View style={styles.statusContainer}>
+          <View style={[styles.statusIndicator, { 
+            backgroundColor: isLate ? theme.error : theme.success 
+          }]} />
+          <ThemedText style={[styles.statusText, { 
+            color: isLate ? theme.error : theme.success 
+          }]}>
+            {isLate ? 'Vencida' : 'En tiempo'}
+          </ThemedText>
               </View>
-            </View>
-          </View>
+        </View>
+      </View>
 
           {/* Contenido scrolleable */}
           <View style={styles.contentContainer}>
-            {/* Detalles de la tarea */}
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
-              <View style={styles.cardSection}>
-                <ThemedText style={styles.sectionTitle}>Descripción</ThemedText>
-                <ThemedText style={[styles.description, { color: theme.subtext }]}>
-                  {task?.description}
-                </ThemedText>
-              </View>
+      {/* Detalles de la tarea */}
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <View style={styles.cardSection}>
+          <ThemedText style={styles.sectionTitle}>Descripción</ThemedText>
+          <ThemedText style={[styles.description, { color: theme.subtext }]}>
+            {task?.description}
+          </ThemedText>
+        </View>
 
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-              <View style={styles.cardSection}>
-                <View style={styles.detailRow}>
-                  <Ionicons name="calendar-outline" size={20} color={theme.subtext} />
-                  <ThemedText style={[styles.detailText, { color: theme.subtext }]}>
-                    Fecha límite: {new Date(task?.end_date).toLocaleDateString()}
-                  </ThemedText>
-                </View>
-                <View style={styles.detailRow}>
-                  <Ionicons name="star-outline" size={20} color={theme.subtext} />
-                  <ThemedText style={[styles.detailText, { color: theme.subtext }]}>
-                    Calificación: {qualification}
-                  </ThemedText>
-                </View>
-              </View>
-            </View>
+        <View style={styles.cardSection}>
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={20} color={theme.subtext} />
+            <ThemedText style={[styles.detailText, { color: theme.subtext }]}>
+              Fecha límite: {new Date(task?.end_date).toLocaleDateString()}
+            </ThemedText>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="star-outline" size={20} color={theme.subtext} />
+            <ThemedText style={[styles.detailText, { color: theme.subtext }]}>
+              Calificación: {qualification}
+            </ThemedText>
+          </View>
+        </View>
+      </View>
 
-            {/* Sección de entrega */}
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
-              <ThemedText style={styles.sectionTitle}>Entrega de tarea</ThemedText>
-              
+      {/* Sección de entrega */}
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <ThemedText style={styles.sectionTitle}>Entrega de tarea</ThemedText>
+        
               {isSubmitted ? (
                 <View style={styles.submittedContainer}>
                   <View style={styles.statusRow}>
@@ -393,20 +393,20 @@ export default function TaskDetailScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <>
-                  <TouchableOpacity 
-                    style={[styles.fileButton, { borderColor: theme.border }]}
-                    onPress={handleSelectFile}
-                  >
-                    <Ionicons 
-                      name="cloud-upload-outline" 
-                      size={24} 
-                      color={theme.primary} 
-                    />
-                    <ThemedText style={[styles.fileButtonText, { color: theme.primary }]}>
+          <>
+            <TouchableOpacity 
+              style={[styles.fileButton, { borderColor: theme.border }]}
+              onPress={handleSelectFile}
+            >
+              <Ionicons 
+                name="cloud-upload-outline" 
+                size={24} 
+                color={theme.primary} 
+              />
+              <ThemedText style={[styles.fileButtonText, { color: theme.primary }]}>
                       Seleccionar archivos
-                    </ThemedText>
-                  </TouchableOpacity>
+              </ThemedText>
+            </TouchableOpacity>
 
                   {selectedFiles.length > 0 && (
                     <View style={styles.filesList}>
@@ -448,7 +448,7 @@ export default function TaskDetailScreen() {
                     </View>
                   )}
 
-                  <TouchableOpacity 
+            <TouchableOpacity 
                     style={[
                       styles.submitButton, 
                       { 
@@ -456,7 +456,7 @@ export default function TaskDetailScreen() {
                         opacity: isUploading ? 0.7 : selectedFiles.length > 0 ? 1 : 0.5 
                       }
                     ]}
-                    onPress={handleSubmit}
+              onPress={handleSubmit}
                     disabled={selectedFiles.length === 0 || isUploading}
                   >
                     {isUploading ? (
@@ -467,12 +467,12 @@ export default function TaskDetailScreen() {
                         </ThemedText>
                       </View>
                     ) : (
-                      <ThemedText style={styles.submitButtonText}>
-                        Enviar tarea
-                      </ThemedText>
+              <ThemedText style={styles.submitButtonText}>
+                Enviar tarea
+              </ThemedText>
                     )}
-                  </TouchableOpacity>
-                </>
+            </TouchableOpacity>
+          </>
               )}
             </View>
           </View>

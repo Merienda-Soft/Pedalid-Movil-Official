@@ -321,7 +321,7 @@ export default function StudentTasksScreen() {
               ]}
             >
               {filteredTasks.map((task) => {
-                const isLate = new Date(task.end_date) < new Date();
+                const isLate = new Date(task.end_date) < new Date() && task.status === 0;
 
                 return (
                   <TouchableOpacity
@@ -335,7 +335,6 @@ export default function StudentTasksScreen() {
                           taskId: task.id,
                         },
                       })
-                      
                     }
                   >
                     <View style={styles.taskContent}>

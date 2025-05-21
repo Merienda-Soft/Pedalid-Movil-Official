@@ -50,19 +50,22 @@ export default function HomeScreen() {
       const response = await getManagements();
       if (response.success && response.managements) {
         setManagements(response.managements);
-        const activeManagement = response.managements.find(m => m.status === 1);
-        if (activeManagement && (!selectedManagement || selectedManagement.id !== activeManagement.id)) {
-          setSelectedManagement({
-            id: activeManagement.id,
-            management: activeManagement.management
-          });
-          setGlobalState(prev => ({
-            ...prev,
-            management: {
+        // Solo establecer la gestión activa si no hay una selección previa
+        if (!selectedManagement) {
+          const activeManagement = response.managements.find(m => m.status === 1);
+          if (activeManagement) {
+            setSelectedManagement({
               id: activeManagement.id,
               management: activeManagement.management
-            }
-          }));
+            });
+            setGlobalState(prev => ({
+              ...prev,
+              management: {
+                id: activeManagement.id,
+                management: activeManagement.management
+              }
+            }));
+          }
         }
       }
     } catch (error) {
@@ -79,25 +82,27 @@ export default function HomeScreen() {
       const response = await getTeacherByEmail(authuser.email);
 
       if (response.success && response.professor) {
-        const cursosMaterias = response.professor.assignments.reduce((acc, assignment) => {
-          const cursoId = assignment.course.id;
-          if (!acc[cursoId]) {
-            acc[cursoId] = {
-              curso: {
-                _id: assignment.course.id,
-                name: assignment.course.course,
-                parallel: assignment.course.parallel.trim(),
-              },
-              professor: assignment.professor_id,
-              materias: []
-            };
-          }
-          acc[cursoId].materias.push({
-            _id: assignment.subject.id,
-            name: assignment.subject.subject,
-          });
-          return acc;
-        }, {});
+        const cursosMaterias = response.professor.assignments
+          .filter(assignment => assignment.management_id === selectedManagement.id)
+          .reduce((acc, assignment) => {
+            const cursoId = assignment.course.id;
+            if (!acc[cursoId]) {
+              acc[cursoId] = {
+                curso: {
+                  _id: assignment.course.id,
+                  name: assignment.course.course,
+                  parallel: assignment.course.parallel.trim(),
+                },
+                professor: assignment.professor_id,
+                materias: []
+              };
+            }
+            acc[cursoId].materias.push({
+              _id: assignment.subject.id,
+              name: assignment.subject.subject,
+            });
+            return acc;
+          }, {});
 
         const transformedData = {
           _id: response.professor.id,

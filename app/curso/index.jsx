@@ -5,7 +5,6 @@ import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { InputFilter } from '../../components/InputFilter';
-import { ButtonLink } from '../../components/ButtonLink';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useGlobalState } from '../../services/UserContext';
 import { useActionSheet } from '@expo/react-native-action-sheet';
@@ -75,21 +74,31 @@ export default function TasksScreen() {
 
     setIsLoading(true);
     try {
-      const taskData = await getActivities(materiaid, cursoid, teacherid, management.id);
-      const transformedTasks = taskData.map(task => ({
-        id: task.id,
-        name: task.name,
-        description: task.description,
-        weight: task.weight,
-        createDate: new Date(task.create_date),
-        end_date: new Date(task.end_date),
-        subject: task.subject.subject,
-        dimension: task.dimension.dimension,
-        assignments: task.assignments,
-        type: task.type,
-      }));
-      setTasks(transformedTasks);
+      console.log("Fetching tasks with params:", { materiaid, cursoid, teacherid, managementId: management.id });
+      const response = await getActivities(materiaid, cursoid, teacherid, management.id);
+      console.log("Received task data:", response);
+      
+      if (response?.ok && Array.isArray(response.data)) {
+        const transformedTasks = response.data.map(task => ({
+          id: task.id,
+          name: task.name,
+          description: task.description,
+          weight: task.weight,
+          createDate: new Date(task.create_date),
+          end_date: new Date(task.end_date),
+          subject: task.subject?.subject || '',
+          dimension: task.dimension?.dimension || '',
+          assignments: task.assignments || [],
+          type: task.type,
+        }));
+        console.log("Transformed tasks:", transformedTasks);
+        setTasks(transformedTasks);
+      } else {
+        console.log("No tasks data received or invalid format");
+        setTasks([]);
+      }
     } catch (error) {
+      console.error("Error fetching tasks:", error);
       setTasks([]);
     } finally {
       setIsLoading(false);
@@ -384,7 +393,7 @@ export default function TasksScreen() {
           ) : filteredTasks.length === 0 ? (
             <ThemedView style={[styles.emptyContainer, { backgroundColor: theme.surface }]}>
               <ThemedText style={[styles.emptyText, { color: theme.subtext }]}>
-                No hay tareas para este mes
+                {tasks.length === 0 ? 'No hay tareas disponibles' : 'No hay tareas para este mes'}
               </ThemedText>
             </ThemedView>
           ) : (
@@ -408,7 +417,7 @@ export default function TasksScreen() {
                               }
                             ]} />
                             <ThemedText style={[styles.taskName, { color: theme.text }]}>
-                              {task.name}
+                              {task.name || 'Sin nombre'}
                             </ThemedText>
                           </View>
                         </View>
@@ -416,14 +425,14 @@ export default function TasksScreen() {
                           <View style={styles.dateItem}>
                             <Ionicons name="calendar-outline" size={14} color={theme.subtext} />
                             <ThemedText style={[styles.taskDate, { color: theme.subtext }]}>
-                              Creada: {task.createDate.toLocaleDateString()}
+                              Creada: {task.createDate?.toLocaleDateString() || 'Fecha no disponible'}
                             </ThemedText>
                           </View>
                           {task.type !== 1 && (
                             <View style={styles.dateItem}>
                               <Ionicons name="time-outline" size={14} color={theme.subtext} />
                               <ThemedText style={[styles.taskDate, { color: theme.subtext }]}>
-                                Entrega: {task.end_date.toLocaleDateString()}
+                                Entrega: {task.end_date?.toLocaleDateString() || 'Fecha no disponible'}
                               </ThemedText>
                             </View>
                           )}
@@ -439,12 +448,12 @@ export default function TasksScreen() {
                             style={[styles.dimensionText, { color: theme.subtext }]}
                             numberOfLines={1}
                           >
-                            {task.dimension}
+                            {task.dimension || 'Sin dimensión'}
                           </ThemedText>
                         </View>
                         <View style={styles.weightBadge}>
                           <ThemedText style={styles.weightText}>
-                            {task.weight}%
+                            {task.weight || 0}%
                           </ThemedText>
                         </View>
                       </View>

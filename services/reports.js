@@ -12,7 +12,7 @@ export const getReportsByCurso = async (professorId, cursoId, managementId, quar
       quarter
     });
 
-    const url = `${API_BASE_URL}/tasks/course/${cursoId}/professor/${professorId}/management/${managementId}?download=true${quarter ? `&quarter=${quarter}` : ''}`;
+    const url = `${API_BASE_URL}/tasks/course/${cursoId}/professor/${professorId}/management/${managementId}`;
     console.log('URL de la petición:', url);
 
     const response = await fetch(url);
@@ -33,15 +33,20 @@ export const getReportsByCurso = async (professorId, cursoId, managementId, quar
       throw new Error(data.error || 'Error al obtener el reporte');
     }
 
+    const { reports } = data.data;
+    if (!reports || !Array.isArray(reports)) {
+      throw new Error('No se recibieron los reportes correctamente');
+    }
+
     // Si es un trimestre específico
     if (quarter) {
-      const { downloadUrl, fileName } = data;
-      if (!downloadUrl) {
-        throw new Error('No se recibió la URL de descarga del reporte');
+      const quarterReport = reports.find(r => r.quarter === Number(quarter));
+      if (!quarterReport) {
+        throw new Error(`No se encontró el reporte para el trimestre ${quarter}`);
       }
 
       // Descargar el archivo
-      const downloadResponse = await fetch(downloadUrl);
+      const downloadResponse = await fetch(quarterReport.url);
       const blob = await downloadResponse.blob();
       const reader = new FileReader();
 
@@ -49,7 +54,7 @@ export const getReportsByCurso = async (professorId, cursoId, managementId, quar
         reader.onload = async () => {
           try {
             const base64data = reader.result.split(',')[1];
-            const filepath = `${FileSystem.documentDirectory}${fileName}`;
+            const filepath = `${FileSystem.documentDirectory}${quarterReport.fileName}`;
 
             await FileSystem.writeAsStringAsync(filepath, base64data, {
               encoding: FileSystem.EncodingType.Base64,
@@ -57,7 +62,7 @@ export const getReportsByCurso = async (professorId, cursoId, managementId, quar
 
             if (Platform.OS === 'android') {
               await Sharing.shareAsync(filepath, {
-                mimeType: 'application/pdf',
+                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 dialogTitle: 'Descargar Reporte',
               });
             } else {
@@ -75,12 +80,6 @@ export const getReportsByCurso = async (professorId, cursoId, managementId, quar
     }
 
     // Si son todos los trimestres
-    const { reports } = data;
-    if (!reports || !Array.isArray(reports)) {
-      throw new Error('No se recibieron los reportes correctamente');
-    }
-
-    // Descargar cada reporte
     for (const report of reports) {
       if (report.url) {
         const downloadResponse = await fetch(report.url);
@@ -99,7 +98,7 @@ export const getReportsByCurso = async (professorId, cursoId, managementId, quar
 
               if (Platform.OS === 'android') {
                 await Sharing.shareAsync(filepath, {
-                  mimeType: 'application/pdf',
+                  mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                   dialogTitle: 'Descargar Reporte',
                 });
               } else {

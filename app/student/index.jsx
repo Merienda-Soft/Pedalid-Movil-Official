@@ -7,7 +7,7 @@ import { InputComboBox } from '../../components/InputComboBox';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../services/AuthProvider';
-import { getManagementActive } from '../../services/management';
+import { getManagementActive, getManagements } from '../../services/management';
 import { getStudents } from '../../services/students/students';
 import { useGlobalState } from '../../services/UserContext';
 import { handleError } from '../../utils/errorHandler';
@@ -19,7 +19,8 @@ export default function StudentHomeScreen() {
   const { globalState, setGlobalState } = useGlobalState();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeManagement, setActiveManagement] = useState(null);
+  const [managements, setManagements] = useState([]);
+  const [selectedManagement, setSelectedManagement] = useState(null);
   const [studentData, setStudentData] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const colorScheme = useColorScheme();
@@ -35,30 +36,39 @@ export default function StudentHomeScreen() {
     error: '#FF5252',
   };
 
-  const fetchActiveManagement = useCallback(async () => {
+  const fetchManagements = useCallback(async () => {
     try {
-      const response = await getManagementActive();
-      if (response.ok && response.data) {
-        const managementData = response.data;
-        setActiveManagement(managementData);
-        setGlobalState(prev => ({
-          ...prev,
-          management: {
-            id: managementData.id,
-            management: managementData.management
+      const response = await getManagements();
+      if (response.success && response.managements) {
+        setManagements(response.managements);
+        // Solo establecer la gestión activa si no hay una selección previa
+        if (!selectedManagement) {
+          const activeManagement = response.managements.find(m => m.status === 1);
+          if (activeManagement) {
+            setSelectedManagement({
+              id: activeManagement.id,
+              management: activeManagement.management
+            });
+            setGlobalState(prev => ({
+              ...prev,
+              management: {
+                id: activeManagement.id,
+                management: activeManagement.management
+              }
+            }));
           }
-        }));
+        }
       }
     } catch (error) {
-      handleError(error, 'Error al cargar la gestión activa');
+      handleError(error, 'Error al cargar las gestiones');
     }
-  }, []);
+  }, [selectedManagement, setGlobalState]);
 
   const fetchStudentData = useCallback(async () => {
-    if (!authuser?.id || !authuser?.role || !activeManagement?.id) return;
+    if (!authuser?.id || !authuser?.role || !selectedManagement?.id) return;
 
     try {
-      const response = await getStudents(authuser.id, authuser.role, activeManagement.id);
+      const response = await getStudents(authuser.id, authuser.role, selectedManagement.id);
       
       if (response.ok && response.data) {
         if (authuser.role === 'tutor') {
@@ -73,23 +83,25 @@ export default function StudentHomeScreen() {
     } catch (error) {
       handleError(error, 'Error al cargar los datos del estudiante');
     }
-  }, [authuser?.id, authuser?.role, activeManagement?.id]);
+  }, [authuser?.id, authuser?.role, selectedManagement?.id]);
 
   const loadAllData = useCallback(async () => {
     if (!isLoading && !refreshing) setIsLoading(true);
     try {
-      await fetchActiveManagement();
-      await fetchStudentData();
+      await fetchManagements();
+      if (selectedManagement) {
+        await fetchStudentData();
+      }
     } catch (error) {
       handleError(error, 'Error al cargar los datos');
     } finally {
       setIsLoading(false);
     }
-  }, [fetchActiveManagement, fetchStudentData]);
+  }, [fetchManagements, fetchStudentData, selectedManagement]);
 
   useEffect(() => {
     loadAllData();
-  }, []);
+  }, [loadAllData]);
 
   useFocusEffect(
     useCallback(() => {
@@ -114,6 +126,30 @@ export default function StudentHomeScreen() {
       text: `${studentInfo.student.name} ${studentInfo.student.lastname} ${studentInfo.student.second_lastname || ''}`,
     }));
   }, [studentData, authuser?.role]);
+
+  const managementOptions = useMemo(() => {
+    return managements.map(management => ({
+      value: management.management,
+      text: `Gestión ${management.management}`,
+    }));
+  }, [managements]);
+
+  const handleManagementChange = useCallback((value) => {
+    const selectedMgmt = managements.find(m => m.management === value);
+    if (selectedMgmt && (selectedManagement?.id !== selectedMgmt.id)) {
+      setSelectedManagement({
+        id: selectedMgmt.id,
+        management: selectedMgmt.management
+      });
+      setGlobalState(prev => ({
+        ...prev,
+        management: {
+          id: selectedMgmt.id,
+          management: selectedMgmt.management
+        }
+      }));
+    }
+  }, [selectedManagement, managements, setGlobalState]);
 
   const handleStudentChange = useCallback((studentId) => {
     if (studentData) {
@@ -152,7 +188,7 @@ export default function StudentHomeScreen() {
             <ThemedView key={subject.id} style={styles.cardWrapper}>
               <TouchableOpacity 
                 onPress={() => {
-                  if (!activeManagement?.id) {
+                  if (!selectedManagement?.id) {
                     Alert.alert('Error', 'No se pudo obtener la gestión activa');
                     return;
                   }
@@ -160,9 +196,9 @@ export default function StudentHomeScreen() {
                     studentId: currentStudent.student.id,
                     courseId: courseData.course.id,
                     subjectId: subject.id,
-                    managementId: activeManagement.id,
+                    managementId: selectedManagement.id,
                     materiaName: subject.name,
-                    managementYear: activeManagement.management
+                    managementYear: selectedManagement.management
                   });
                 }}
               >
@@ -192,7 +228,7 @@ export default function StudentHomeScreen() {
         </View>
       </View>
     );
-  }, [authuser?.role, selectedStudent, studentData, navigation, activeManagement, theme]);
+  }, [authuser?.role, selectedStudent, studentData, navigation, selectedManagement, theme]);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -208,7 +244,7 @@ export default function StudentHomeScreen() {
           onPress: async () => {
             await logout();
             setGlobalState({});
-            setActiveManagement(null);
+            setSelectedManagement(null);
             setStudentData(null);
             setSelectedStudent(null);
             navigation.reset({
@@ -281,7 +317,7 @@ export default function StudentHomeScreen() {
         <View>
           <ThemedText type="title" style={{ color: theme.text }}>Cursos</ThemedText>
           <ThemedText type="default" style={{ color: theme.subtext }}>
-            Gestión {activeManagement?.management}
+            Gestión {selectedManagement?.management}
           </ThemedText>
         </View>
         <TouchableOpacity 
@@ -295,6 +331,16 @@ export default function StudentHomeScreen() {
             </ThemedText>
           </View>
         </TouchableOpacity>
+      </ThemedView>
+
+      <ThemedView style={{ backgroundColor: theme.surface, marginBottom: 16 }}>
+        <InputComboBox
+          label="Gestión Académica"
+          selectedValue={selectedManagement?.management}
+          onValueChange={handleManagementChange}
+          options={managementOptions}
+          style={[styles.managementSelect, { backgroundColor: theme.card }]}
+        />
       </ThemedView>
 
       {authuser?.role === 'tutor' && studentData && (

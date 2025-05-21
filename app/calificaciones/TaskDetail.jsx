@@ -226,6 +226,7 @@ export default function TaskDetailScreen() {
 
   const assignment = task?.assignments?.[0];
   const qualification = assignment?.qualification?.trim() || '-';
+  const comment = assignment?.comment || '';
   const isSubmitted = assignment?.status === 1 || assignment?.status === 2;
   const isLate = new Date(task?.end_date) < new Date();
 
@@ -305,6 +306,26 @@ export default function TaskDetailScreen() {
               Calificación: {qualification}
             </ThemedText>
           </View>
+          {comment && (
+            <>
+              <View style={[styles.divider, { backgroundColor: theme.border, marginVertical: 12 }]} />
+              <View style={[styles.commentContainer, { 
+                backgroundColor: colorScheme === 'dark' ? '#2A4A54' : '#F5F5F5',
+                borderLeftWidth: 3,
+                borderLeftColor: theme.primary
+              }]}>
+                <View style={styles.commentHeader}>
+                  <Ionicons name="chatbubble-outline" size={20} color={theme.primary} />
+                  <ThemedText style={[styles.commentTitle, { color: theme.primary }]}>
+                    Comentario del profesor
+                  </ThemedText>
+                </View>
+                <ThemedText style={[styles.commentText, { color: theme.text }]}>
+                  {comment}
+                </ThemedText>
+              </View>
+            </>
+          )}
         </View>
       </View>
 
@@ -671,5 +692,24 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  commentContainer: {
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  commentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  commentText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 }); 

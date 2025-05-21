@@ -3,8 +3,6 @@ import { Image, StyleSheet, Alert, View, ScrollView, RefreshControl, ActivityInd
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
-import { Collapsible } from '../../components/Collapsible';
-import { CollapsibleOptions } from '../../components/CollapsibleOptions';
 import { InputComboBox } from '../../components/InputComboBox';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';

@@ -68,6 +68,7 @@ export default function AuthLogin() {
       };
 
       const userData = await authUser(user);
+      console.log(userData);
 
       if (userData.success) {
         setauthUser(userData.user);

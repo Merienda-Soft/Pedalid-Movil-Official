@@ -7,7 +7,6 @@ import { ThemedView } from '../../components/ThemedView';
 import { InputRate } from '../../components/InputRate';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useGlobalState } from '../../services/UserContext';
-import { API_BASE_URL } from "../../services/apiConfig";
 import { getActivityByIdwithassignments, updateActivity } from '../../services/activity';
 
 const StudentListItem = ({ student, taskId, colorScheme, navigateToTaskDetail }) => {
@@ -68,6 +67,7 @@ const StudentListItem = ({ student, taskId, colorScheme, navigateToTaskDetail })
           {status.text}
         </ThemedText>
       </View>
+      
       <TouchableOpacity 
         onPress={() => navigateToTaskDetail(student.id, taskId)}
         style={styles.iconButton}
@@ -157,15 +157,23 @@ export default function TasksScreenCalification() {
     setChangeCount(prev => prev + 1);
   }, []);
 
+  const handleCommentChange = useCallback((index, newComment) => {
+    setEstudiantes(prevEstudiantes => {
+      const updatedEstudiantes = [...prevEstudiantes];
+      updatedEstudiantes[index].comentario = newComment;
+      return updatedEstudiantes;
+    });
+    setChangeCount(prev => prev + 1);
+  }, []);
+
   const saveCalificaciones = async () => {
     setIsSaving(true);
     try {
-      // Transformar el array de estudiantes al formato requerido
       const studentsData = estudiantes.map(estudiante => ({
         student_id: estudiante.id,
-        qualification: estudiante.calificacion
+        qualification: estudiante.calificacion,
+        comment: estudiante.comentario || ''
       }));
-
       
       const response = await updateActivity(idTask, studentsData);
       if (!response.ok) throw new Error('Error al guardar'); 
@@ -306,6 +314,7 @@ export default function TasksScreenCalification() {
                 name={estudiante.nombre}
                 grade={estudiante.calificacion}
                 onGradeChange={(newGrade) => handleGradeChange(index, newGrade)}
+                onCommentPress={(comment) => handleCommentChange(index, comment)}
                 style={styles.studentItem}
                 theme={colorScheme}
               />

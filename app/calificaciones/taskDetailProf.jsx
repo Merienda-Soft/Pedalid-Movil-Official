@@ -16,6 +16,7 @@ export default function TaskDetailProf() {
   const [qualification, setQualification] = useState('');
   const [saving, setSaving] = useState(false);
   const [submittedFiles, setSubmittedFiles] = useState([]);
+  const [comment, setComment] = useState('');
   
   const { studentId, taskId } = route.params;
 
@@ -45,6 +46,7 @@ export default function TaskDetailProf() {
         const assignment = response.data.assignments?.[0];
         if (assignment) {
           setQualification(assignment.qualification || '');
+          setComment(assignment.comment || '');
           if (assignment.files) {
             setSubmittedFiles(assignment.files);
           }
@@ -105,7 +107,8 @@ export default function TaskDetailProf() {
       const studentsData = [
         {
           student_id: studentId,
-          qualification: qualification
+          qualification: qualification,
+          comment: comment
         }
       ];
       
@@ -269,6 +272,26 @@ export default function TaskDetailProf() {
                     </ThemedText>
                   )}
                 </TouchableOpacity>
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: theme.border, marginTop: 16 }]} />
+
+              <View style={styles.commentSection}>
+                <ThemedText style={[styles.sectionTitle, { fontSize: 16 }]}>Comentario</ThemedText>
+                <TextInput
+                  style={[styles.commentInput, { 
+                    color: theme.text,
+                    borderColor: theme.border,
+                    backgroundColor: colorScheme === 'dark' ? '#1E1E1E' : '#F5F5F5'
+                  }]}
+                  value={comment}
+                  onChangeText={setComment}
+                  placeholder="Escribe un comentario para el estudiante..."
+                  placeholderTextColor={theme.subtext}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
               </View>
             </View>
 
@@ -476,5 +499,15 @@ const styles = StyleSheet.create({
   fileName: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  commentSection: {
+    marginTop: 16,
+  },
+  commentInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 100,
+    fontSize: 16,
   },
 });

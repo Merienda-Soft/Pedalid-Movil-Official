@@ -14,6 +14,7 @@ export const getActivities = async (materiaId, cursoId, teacherId, managementId)
     return await response.json();
 }
 
+// para obtener los detalles de la actividad
 export const getActivityById = async (idActivity) => {
   const response = await fetch(`${API_BASE_URL}/tasks/${idActivity}`, {
     method: "GET",

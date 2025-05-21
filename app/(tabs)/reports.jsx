@@ -54,8 +54,56 @@ export default function ReportsScreen() {
   const handleCourseReport = async (curso) => {
     setIsLoading(true);
     try {
-      await getReportsByCurso(curso.professor, curso.curso._id);
-      Alert.alert('Éxito', `El reporte del curso ${curso.curso.name} ha sido descargado`);
+      // Mostrar selector de trimestre
+      Alert.alert(
+        'Seleccionar Trimestre',
+        'Selecciona el trimestre para el reporte',
+        [
+          {
+            text: 'Primer Trimestre',
+            onPress: () => downloadReport(curso, '1')
+          },
+          {
+            text: 'Segundo Trimestre',
+            onPress: () => downloadReport(curso, '2')
+          },
+          {
+            text: 'Tercer Trimestre',
+            onPress: () => downloadReport(curso, '3')
+          },
+          {
+            text: 'Cancelar',
+            style: 'cancel'
+          }
+        ],
+        { cancelable: true }
+      );
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const downloadReport = async (curso, quarter) => {
+    setIsLoading(true);
+    try {
+      if (!authuser?.id || !globalState.management?.id) {
+        Alert.alert('Error', 'No se pudo obtener la información necesaria para generar el reporte');
+        return;
+      }
+
+      await getReportsByCurso(
+        curso.professor,
+        curso.curso._id,
+        globalState.management.id,
+        quarter
+      );
+      
+      Alert.alert(
+        'Éxito',
+        `El reporte del ${quarter}° trimestre para el curso ${curso.curso.name} se está descargando`
+      );
     } catch (error) {
       handleError(error);
     } finally {
@@ -72,7 +120,8 @@ export default function ReportsScreen() {
         cursoid: curso.curso._id,
         teacherid: curso.professor,
         materiaName: materia.name,
-        management: JSON.stringify(globalState.management)
+        management: JSON.stringify(globalState.management),
+        activities: JSON.stringify([])
       }
     });
   };

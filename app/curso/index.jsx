@@ -234,10 +234,10 @@ export default function TasksScreen() {
     const now = new Date();
     
     return tasks.filter(task => {
-      const taskCreateDate = new Date(task.createDate);
+      const taskEndDate = new Date(task.end_date);
       const matchesSearch = task.name.toLowerCase().includes(searchValue.toLowerCase());
-      const matchesMonth = taskCreateDate.getMonth() === currentDate.getMonth() && 
-                         taskCreateDate.getFullYear() === currentDate.getFullYear();
+      const matchesMonth = taskEndDate.getMonth() === currentDate.getMonth() && 
+                         taskEndDate.getFullYear() === currentDate.getFullYear();
 
       // Aplicar filtros de estado
       let matchesFilter = true;
@@ -260,9 +260,9 @@ export default function TasksScreen() {
   const getTaskCountByFilter = useCallback((filterKey) => {
     const now = new Date();
     return tasks.filter(task => {
-      const taskCreateDate = new Date(task.createDate);
-      const matchesMonth = taskCreateDate.getMonth() === currentDate.getMonth() && 
-                          taskCreateDate.getFullYear() === currentDate.getFullYear();
+      const taskEndDate = new Date(task.end_date);
+      const matchesMonth = taskEndDate.getMonth() === currentDate.getMonth() && 
+                          taskEndDate.getFullYear() === currentDate.getFullYear();
       
       if (!matchesMonth) return false;
 

@@ -52,22 +52,29 @@ export default function ReportsScreen() {
     setLoading(true);
 
     try {
-      // Modificamos la llamada para manejar el caso donde management es undefined
-      const managementId = JSON.parse(management)?.id; // Valor por defecto si no existe
-
+      const managementId = JSON.parse(management)?.id;
+      console.log("Fetching data with params:", { materiaid, cursoid, teacherid, managementId });
 
       const [activitiesData, studentsData] = await Promise.all([
         getActivities(materiaid, cursoid, teacherid, managementId),
         getStudentsByCourse(cursoid)
       ]);
 
+      console.log("Received activities data:", activitiesData);
+      console.log("Received students data:", studentsData);
 
-      if (activitiesData) {
-        setActivities(activitiesData);
+      if (activitiesData?.ok && Array.isArray(activitiesData.data)) {
+        setActivities(activitiesData.data);
+      } else {
+        console.log("No activities data or invalid format");
+        setActivities([]);
       }
 
       if (studentsData && studentsData.ok) {
         setStudents(studentsData.data);
+      } else {
+        console.log("No students data or invalid format");
+        setStudents([]);
       }
     } catch (error) {
       console.error('Error details:', {
@@ -76,6 +83,8 @@ export default function ReportsScreen() {
         stack: error.stack
       });
       Alert.alert('Error', 'No se pudieron cargar los datos');
+      setActivities([]);
+      setStudents([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -92,9 +101,13 @@ export default function ReportsScreen() {
   }, [fetchData]);
 
   const filteredActivities = useMemo(() => {
+    if (!activities || !Array.isArray(activities)) {
+      return [];
+    }
+    
     return activities.filter(activity => {
-      const activityDate = new Date(activity.create_date);
-      const monthMatch = activityDate.getMonth() === selectedMonth;
+      const activityEndDate = new Date(activity.end_date);
+      const monthMatch = activityEndDate.getMonth() === selectedMonth;
       const dimensionMatch = !selectedDimension || activity.dimension_id === selectedDimension;
       
       return monthMatch && dimensionMatch;

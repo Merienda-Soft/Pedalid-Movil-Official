@@ -1,37 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, useColorScheme, TouchableOpacity, ActivityIndicator, Image, ScrollView, Linking, TextInput, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedView } from '../../components/ThemedView';
-import { ThemedText } from '../../components/ThemedText';
-import { useRoute } from '@react-navigation/native';
-import { getTaskByIdwithassignments, updateActivity } from '../../services/activity';
-import { handleError } from '../../utils/errorHandler';
-import ParallaxScrollView from '../../components/ParallaxScrollView';
+import { Ionicons } from "@expo/vector-icons";
+import { useRoute } from "@react-navigation/native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  useColorScheme,
+  View,
+} from "react-native";
+import EvaluationToolViewer from "../../components/EvaluationToolViewer";
+import ParallaxScrollView from "../../components/ParallaxScrollView";
+import { ThemedText } from "../../components/ThemedText";
+import { ThemedView } from "../../components/ThemedView";
+import {
+  getTaskByIdwithassignments,
+  updateActivity,
+} from "../../services/activity";
+import { handleError } from "../../utils/errorHandler";
 
 export default function TaskDetailProf() {
   const colorScheme = useColorScheme();
   const route = useRoute();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [qualification, setQualification] = useState('');
+  const [qualification, setQualification] = useState("");
   const [saving, setSaving] = useState(false);
   const [submittedFiles, setSubmittedFiles] = useState([]);
-  const [comment, setComment] = useState('');
-  
+  const [comment, setComment] = useState("");
+  const [evaluationMethodology, setEvaluationMethodology] = useState(null);
+
   const { studentId, taskId } = route.params;
 
   // Definir colores basados en el tema
   const theme = {
-    background: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
-    surface: colorScheme === 'dark' ? '#121212' : '#FFFFFF',
-    card: colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
-    text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-    subtext: colorScheme === 'dark' ? '#8E8E93' : '#666666',
-    border: colorScheme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.05)',
-    primary: '#17A2B8',
-    error: '#FF5252',
-    success: '#4CAF50',
-    evaluated: '#9C27B0',
+    background: colorScheme === "dark" ? "#000000" : "#FFFFFF",
+    surface: colorScheme === "dark" ? "#121212" : "#FFFFFF",
+    card: colorScheme === "dark" ? "#1E1E1E" : "#FFFFFF",
+    text: colorScheme === "dark" ? "#FFFFFF" : "#000000",
+    subtext: colorScheme === "dark" ? "#8E8E93" : "#666666",
+    border: colorScheme === "dark" ? "#2C2C2E" : "rgba(0,0,0,0.05)",
+    primary: "#17A2B8",
+    error: "#FF5252",
+    success: "#4CAF50",
+    evaluated: "#9C27B0",
   };
 
   useEffect(() => {
@@ -45,17 +61,24 @@ export default function TaskDetailProf() {
         setTask(response.data);
         const assignment = response.data.assignments?.[0];
         if (assignment) {
-          setQualification(assignment.qualification || '');
-          setComment(assignment.comment || '');
+          setQualification(assignment.qualification || "");
+          setComment(assignment.comment || "");
           if (assignment.files) {
             setSubmittedFiles(assignment.files);
           }
+          // Cargar metodología de evaluación si existe
+          if (assignment.evaluation_methodology) {
+            setEvaluationMethodology({
+              type: assignment.type,
+              methodology: assignment.evaluation_methodology,
+            });
+          }
         }
       } else {
-        handleError(new Error('No se pudo cargar la tarea'));
+        handleError(new Error("No se pudo cargar la tarea"));
       }
     } catch (error) {
-      handleError(error, 'Error al cargar los detalles de la tarea');
+      handleError(error, "Error al cargar los detalles de la tarea");
     } finally {
       setLoading(false);
     }
@@ -64,34 +87,44 @@ export default function TaskDetailProf() {
   const handleOpenFile = async (fileUrl) => {
     try {
       const supported = await Linking.canOpenURL(fileUrl);
-      
+
       if (supported) {
         await Linking.openURL(fileUrl);
       } else {
         handleError(new Error(`No se puede abrir la URL: ${fileUrl}`));
       }
     } catch (error) {
-      handleError(error, 'Error al abrir el archivo');
+      handleError(error, "Error al abrir el archivo");
     }
   };
+
+  // Manejar cambios en la metodología de evaluación
+  const handleEvaluationChange = useCallback((updatedMethodology) => {
+    setEvaluationMethodology(updatedMethodology);
+  }, []);
+
+  // Manejar cambios en el puntaje desde la evaluación
+  const handleScoreChange = useCallback((score) => {
+    setQualification(String(score));
+  }, []);
 
   const handleSaveQualification = async () => {
     // Si está evaluada (status 2), mostrar confirmación primero
     if (assignment?.status === 2) {
       Alert.alert(
-        'Reevaluar Tarea',
-        '¿Desea reevaluar la nota de esta tarea?',
+        "Reevaluar Tarea",
+        "¿Desea reevaluar la nota de esta tarea?",
         [
-          { 
-            text: 'No', 
-            style: 'cancel'
+          {
+            text: "No",
+            style: "cancel",
           },
           {
-            text: 'Sí',
+            text: "Sí",
             onPress: async () => {
               await saveQualification();
-            }
-          }
+            },
+          },
         ]
       );
     } else {
@@ -103,24 +136,27 @@ export default function TaskDetailProf() {
   const saveQualification = async () => {
     try {
       setSaving(true);
-      
+
       const studentsData = [
         {
           student_id: studentId,
           qualification: qualification,
-          comment: comment
-        }
+          comment: comment,
+          evaluation_methodology: evaluationMethodology?.methodology,
+        },
       ];
-      
+
       const response = await updateActivity(taskId, studentsData);
-      
+
       if (response.ok) {
-        Alert.alert('Éxito', 'Calificación guardada correctamente');
+        Alert.alert("Éxito", "Calificación guardada correctamente");
+        // Refrescar los datos para reflejar el cambio de estado
+        await fetchTaskDetails();
       } else {
-        throw new Error('Error al guardar la calificación');
+        throw new Error("Error al guardar la calificación");
       }
     } catch (error) {
-      handleError(error, 'Error al guardar la calificación');
+      handleError(error, "Error al guardar la calificación");
     } finally {
       setSaving(false);
     }
@@ -128,7 +164,9 @@ export default function TaskDetailProf() {
 
   if (loading) {
     return (
-      <ThemedView style={[styles.container, { backgroundColor: theme.surface }]}>
+      <ThemedView
+        style={[styles.container, { backgroundColor: theme.surface }]}
+      >
         <ActivityIndicator size="large" color={theme.primary} />
       </ThemedView>
     );
@@ -137,26 +175,28 @@ export default function TaskDetailProf() {
   const assignment = task?.assignments?.[0];
   const isSubmitted = assignment?.status === 1;
   const isLate = new Date(task?.end_date) < new Date();
-  const studentName = assignment?.student?.person 
-    ? `${assignment.student.person.name} ${assignment.student.person.lastname} ${assignment.student.person.second_lastname || ''}` 
-    : 'Estudiante';
+  const studentName = assignment?.student?.person
+    ? `${assignment.student.person.name} ${
+        assignment.student.person.lastname
+      } ${assignment.student.person.second_lastname || ""}`
+    : "Estudiante";
 
   const getSubmissionStatus = (status) => {
     switch (status) {
       case 2:
         return {
-          text: 'Evaluada',
-          color: theme.evaluated || '#9C27B0'
+          text: "Evaluada",
+          color: theme.evaluated || "#9C27B0",
         };
       case 1:
         return {
-          text: 'Entregada',
-          color: theme.success
+          text: "Entregada",
+          color: theme.success,
         };
       default:
         return {
-          text: 'No entregada',
-          color: theme.error
+          text: "No entregada",
+          color: theme.error,
         };
     }
   };
@@ -169,10 +209,10 @@ export default function TaskDetailProf() {
       <View style={styles.headerParallax}>
         <ParallaxScrollView
           modo={2}
-          headerBackgroundColor={{ light: '#A1CEDC', dark: '#000000' }}
+          headerBackgroundColor={{ light: "#A1CEDC", dark: "#000000" }}
           headerImage={
             <Image
-              source={require('../../assets/images/task.jpg')}
+              source={require("../../assets/images/task.jpg")}
               style={styles.headerImage}
             />
           }
@@ -187,17 +227,29 @@ export default function TaskDetailProf() {
       <View style={styles.mainContent}>
         <ScrollView style={styles.scrollContent}>
           {/* Encabezado de la tarea */}
-          <View style={[styles.headerFixed, { backgroundColor: theme.surface }]}>
+          <View
+            style={[styles.headerFixed, { backgroundColor: theme.surface }]}
+          >
             <View style={styles.header}>
               <ThemedText style={styles.title}>{task?.name}</ThemedText>
               <View style={styles.statusContainer}>
-                <View style={[styles.statusIndicator, { 
-                  backgroundColor: isLate ? theme.error : theme.success 
-                }]} />
-                <ThemedText style={[styles.statusText, { 
-                  color: isLate ? theme.error : theme.success 
-                }]}>
-                  {isLate ? 'Vencida' : 'En tiempo'}
+                <View
+                  style={[
+                    styles.statusIndicator,
+                    {
+                      backgroundColor: isLate ? theme.error : theme.success,
+                    },
+                  ]}
+                />
+                <ThemedText
+                  style={[
+                    styles.statusText,
+                    {
+                      color: isLate ? theme.error : theme.success,
+                    },
+                  ]}
+                >
+                  {isLate ? "Vencida" : "En tiempo"}
                 </ThemedText>
               </View>
             </View>
@@ -207,14 +259,21 @@ export default function TaskDetailProf() {
           <View style={styles.contentContainer}>
             {/* Información del estudiante */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
-              <ThemedText style={styles.sectionTitle}>Información del Estudiante</ThemedText>
+              <ThemedText style={styles.sectionTitle}>
+                Información del Estudiante
+              </ThemedText>
               <ThemedText style={[styles.studentName, { color: theme.text }]}>
                 {studentName}
               </ThemedText>
-              <ThemedText style={[styles.submissionStatus, { 
-                color: status.color,
-                marginTop: 8 
-              }]}>
+              <ThemedText
+                style={[
+                  styles.submissionStatus,
+                  {
+                    color: status.color,
+                    marginTop: 8,
+                  },
+                ]}
+              >
                 Estado: {status.text}
               </ThemedText>
             </View>
@@ -223,44 +282,100 @@ export default function TaskDetailProf() {
             <View style={[styles.card, { backgroundColor: theme.card }]}>
               <View style={styles.cardSection}>
                 <ThemedText style={styles.sectionTitle}>Descripción</ThemedText>
-                <ThemedText style={[styles.description, { color: theme.subtext }]}>
+                <ThemedText
+                  style={[styles.description, { color: theme.subtext }]}
+                >
                   {task?.description}
                 </ThemedText>
               </View>
 
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              <View
+                style={[styles.divider, { backgroundColor: theme.border }]}
+              />
 
               <View style={styles.cardSection}>
                 <View style={styles.detailRow}>
-                  <Ionicons name="calendar-outline" size={20} color={theme.subtext} />
-                  <ThemedText style={[styles.detailText, { color: theme.subtext }]}>
-                    Fecha límite: {new Date(task?.end_date).toLocaleDateString()}
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={theme.subtext}
+                  />
+                  <ThemedText
+                    style={[styles.detailText, { color: theme.subtext }]}
+                  >
+                    Fecha límite:{" "}
+                    {new Date(task?.end_date).toLocaleDateString()}
                   </ThemedText>
                 </View>
               </View>
             </View>
 
+            {/* Sección de evaluación (si hay metodología) */}
+            {evaluationMethodology && (
+              <View style={[styles.card, { backgroundColor: theme.card }]}>
+                <ThemedText style={styles.sectionTitle}>Evaluación</ThemedText>
+                <EvaluationToolViewer
+                  methodology={evaluationMethodology}
+                  onScoreChange={handleScoreChange}
+                  onEvaluationChange={handleEvaluationChange}
+                  isEditable={assignment?.status !== 2}
+                />
+              </View>
+            )}
+
             {/* Sección de calificación */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
               <ThemedText style={styles.sectionTitle}>Calificación</ThemedText>
-              
+
+              {evaluationMethodology && (
+                <View
+                  style={[
+                    styles.evaluationNote,
+                    { backgroundColor: theme.surface },
+                  ]}
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={16}
+                    color={theme.primary}
+                  />
+                  <ThemedText
+                    style={[
+                      styles.evaluationNoteText,
+                      { color: theme.subtext },
+                    ]}
+                  >
+                    La calificación se calcula automáticamente según la
+                    evaluación
+                  </ThemedText>
+                </View>
+              )}
+
               <View style={styles.qualificationContainer}>
                 <TextInput
-                  style={[styles.qualificationInput, { 
-                    color: theme.text,
-                    borderColor: theme.border,
-                    backgroundColor: colorScheme === 'dark' ? '#1E1E1E' : '#F5F5F5'
-                  }]}
+                  style={[
+                    styles.qualificationInput,
+                    {
+                      color: theme.text,
+                      borderColor: theme.border,
+                      backgroundColor:
+                        colorScheme === "dark" ? "#1E1E1E" : "#F5F5F5",
+                    },
+                  ]}
                   value={qualification}
                   onChangeText={setQualification}
                   placeholder="Ingrese calificación"
                   placeholderTextColor={theme.subtext}
                   keyboardType="numeric"
                   maxLength={3}
+                  editable={!evaluationMethodology} // Deshabilitar si hay metodología de evaluación
                 />
-                
-                <TouchableOpacity 
-                  style={[styles.saveButton, { backgroundColor: theme.primary }]}
+
+                <TouchableOpacity
+                  style={[
+                    styles.saveButton,
+                    { backgroundColor: theme.primary },
+                  ]}
                   onPress={handleSaveQualification}
                   disabled={saving}
                 >
@@ -268,22 +383,33 @@ export default function TaskDetailProf() {
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
                     <ThemedText style={styles.saveButtonText}>
-                      {assignment?.status === 2 ? 'Reevaluar' : 'Guardar'}
+                      {assignment?.status === 2 ? "Reevaluar" : "Guardar"}
                     </ThemedText>
                   )}
                 </TouchableOpacity>
               </View>
 
-              <View style={[styles.divider, { backgroundColor: theme.border, marginTop: 16 }]} />
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.border, marginTop: 16 },
+                ]}
+              />
 
               <View style={styles.commentSection}>
-                <ThemedText style={[styles.sectionTitle, { fontSize: 16 }]}>Comentario</ThemedText>
+                <ThemedText style={[styles.sectionTitle, { fontSize: 16 }]}>
+                  Comentario
+                </ThemedText>
                 <TextInput
-                  style={[styles.commentInput, { 
-                    color: theme.text,
-                    borderColor: theme.border,
-                    backgroundColor: colorScheme === 'dark' ? '#1E1E1E' : '#F5F5F5'
-                  }]}
+                  style={[
+                    styles.commentInput,
+                    {
+                      color: theme.text,
+                      borderColor: theme.border,
+                      backgroundColor:
+                        colorScheme === "dark" ? "#1E1E1E" : "#F5F5F5",
+                    },
+                  ]}
                   value={comment}
                   onChangeText={setComment}
                   placeholder="Escribe un comentario para el estudiante..."
@@ -296,54 +422,69 @@ export default function TaskDetailProf() {
             </View>
 
             {/* Archivos entregados (si hay) */}
-            {(assignment?.status === 1 || assignment?.status === 2) && submittedFiles.length > 0 && (
-              <View style={[styles.card, { backgroundColor: theme.card }]}>
-                <ThemedText style={styles.sectionTitle}>Archivos Entregados</ThemedText>
-                
-                <View style={[styles.filesListContainer, { 
-                  backgroundColor: theme.surface === '#121212' ? '#1A1A1A' : '#F5F5F5',
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  marginTop: 8,
-                  borderRadius: 8,
-                  padding: 8
-                }]}>
-                  {submittedFiles.map((file, index) => (
-                    <TouchableOpacity 
-                      key={file.url} 
-                      style={[styles.fileItem, { 
-                        backgroundColor: theme.surface === '#121212' ? '#2C2C2E' : '#FFFFFF',
-                        marginBottom: 8,
-                        borderRadius: 8
-                      }]}
-                      onPress={() => handleOpenFile(file.url)}
-                    >
-                      <View style={styles.fileInfo}>
-                        <Ionicons 
-                          name="document-outline"
-                          size={24} 
-                          color={theme.primary} 
-                        />
-                        <View style={styles.fileDetails}>
-                          <ThemedText 
-                            style={[styles.fileName, { color: theme.text }]} 
-                            numberOfLines={1}
-                          >
-                            {file.name}
-                          </ThemedText>
+            {(assignment?.status === 1 || assignment?.status === 2) &&
+              submittedFiles.length > 0 && (
+                <View style={[styles.card, { backgroundColor: theme.card }]}>
+                  <ThemedText style={styles.sectionTitle}>
+                    Archivos Entregados
+                  </ThemedText>
+
+                  <View
+                    style={[
+                      styles.filesListContainer,
+                      {
+                        backgroundColor:
+                          theme.surface === "#121212" ? "#1A1A1A" : "#F5F5F5",
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                        marginTop: 8,
+                        borderRadius: 8,
+                        padding: 8,
+                      },
+                    ]}
+                  >
+                    {submittedFiles.map((file, index) => (
+                      <TouchableOpacity
+                        key={file.url}
+                        style={[
+                          styles.fileItem,
+                          {
+                            backgroundColor:
+                              theme.surface === "#121212"
+                                ? "#2C2C2E"
+                                : "#FFFFFF",
+                            marginBottom: 8,
+                            borderRadius: 8,
+                          },
+                        ]}
+                        onPress={() => handleOpenFile(file.url)}
+                      >
+                        <View style={styles.fileInfo}>
+                          <Ionicons
+                            name="document-outline"
+                            size={24}
+                            color={theme.primary}
+                          />
+                          <View style={styles.fileDetails}>
+                            <ThemedText
+                              style={[styles.fileName, { color: theme.text }]}
+                              numberOfLines={1}
+                            >
+                              {file.name}
+                            </ThemedText>
+                          </View>
                         </View>
-                      </View>
-                      <Ionicons 
-                        name="open-outline" 
-                        size={20} 
-                        color={theme.primary} 
-                        style={{ marginRight: 8 }}
-                      />
-                    </TouchableOpacity>
-                  ))}
+                        <Ionicons
+                          name="open-outline"
+                          size={20}
+                          color={theme.primary}
+                          style={{ marginRight: 8 }}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
-              </View>
-            )}
+              )}
           </View>
         </ScrollView>
       </View>
@@ -357,22 +498,22 @@ const styles = StyleSheet.create({
   },
   headerParallax: {
     height: 110,
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     zIndex: 1,
   },
   headerImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   mainContent: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   headerFixed: {
-    width: '100%',
+    width: "100%",
     zIndex: 2,
     marginTop: 110, // Mismo valor que headerParallax height
     padding: 16,
@@ -384,19 +525,19 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     flex: 1,
   },
   statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   statusIndicator: {
@@ -406,14 +547,14 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   card: {
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
@@ -423,7 +564,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 12,
   },
   description: {
@@ -435,8 +576,8 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 8,
   },
@@ -445,15 +586,15 @@ const styles = StyleSheet.create({
   },
   studentName: {
     fontSize: 18,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   submissionStatus: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   qualificationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   qualificationInput: {
@@ -463,33 +604,33 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 18,
-    textAlign: 'center',
+    textAlign: "center",
   },
   saveButton: {
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   filesListContainer: {
-    width: '100%',
+    width: "100%",
   },
   fileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 12,
     borderRadius: 8,
   },
   fileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     gap: 12,
   },
@@ -498,7 +639,7 @@ const styles = StyleSheet.create({
   },
   fileName: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   commentSection: {
     marginTop: 16,
@@ -509,5 +650,17 @@ const styles = StyleSheet.create({
     padding: 12,
     minHeight: 100,
     fontSize: 16,
+  },
+  evaluationNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  evaluationNoteText: {
+    fontSize: 14,
+    flex: 1,
   },
 });

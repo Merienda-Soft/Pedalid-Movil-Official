@@ -175,7 +175,7 @@ export default function TasksScreenCalification() {
         comment: estudiante.comentario || ''
       }));
       
-      const response = await updateActivity(idTask, studentsData);
+      const response = await updateActivity(idTask, studentsData, globalState.teacherid);
       if (!response.ok) throw new Error('Error al guardar'); 
       
       setChangeCount(0);

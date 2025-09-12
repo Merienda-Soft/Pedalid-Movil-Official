@@ -192,7 +192,7 @@ export default function NewTaskScreen() {
     }
 
     try {
-      await createActivity(newTask);
+      await createActivity(newTask, teacherid);
       const management = globalState.management;
       Alert.alert("Éxito", "La tarea se creó correctamente", [
         {

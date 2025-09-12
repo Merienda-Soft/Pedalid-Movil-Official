@@ -6,7 +6,7 @@ export const getStudentsByCourse = async (courseId) => {
 };
 
 // Registrar asistencia para un curso completo
-export const registerAttendance = async (attendanceData, recordsData) => {
+export const registerAttendance = async (attendanceData, recordsData, createdBy) => {
     const response = await fetch(`${API_BASE_URL}/attendance/register`, {
         method: 'POST',
         headers: {
@@ -14,7 +14,8 @@ export const registerAttendance = async (attendanceData, recordsData) => {
         },
         body: JSON.stringify({
             attendance: attendanceData,
-            records: recordsData
+            records: recordsData,
+            created_by: createdBy
         })
     });
     return response.json();
@@ -33,13 +34,18 @@ export const getAttendanceByCourseDate = async (courseId, date) => {
 };
 
 // Actualizar estado de asistencia de un estudiante
-export const updateAttendanceRecord = async (updateData) => {
+export const updateAttendanceRecord = async (updateData, updatedBy) => {
+    const dataWithAudit = {
+        ...updateData,
+        updated_by: updatedBy
+    };
+
     const response = await fetch(`${API_BASE_URL}/attendance/attendance/batch-update`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(dataWithAudit)
     });
     return response.json();
 };

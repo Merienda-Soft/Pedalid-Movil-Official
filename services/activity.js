@@ -48,13 +48,18 @@ export const getTaskByIdwithassignments = async (taskId, studentId) => {
   return await response.json();
 }
 
-export const createActivity = async (activityData) => {
+export const createActivity = async (activityData, createdBy) => {
+    const dataWithAudit = {
+      ...activityData,
+      created_by: createdBy
+    };
+
     const response = await fetch(`${API_BASE_URL}/tasks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(activityData),
+      body: JSON.stringify(dataWithAudit),
     });
   
     if (!response.ok) {
@@ -64,27 +69,57 @@ export const createActivity = async (activityData) => {
     return await response.json();
   };
 
-export const updateActivity = async (activityId, studentsData) => {
+export const updateActivity = async (activityId, studentsData, updatedBy) => {
+  const dataWithAudit = {
+    students: studentsData,
+    updated_by: updatedBy
+  };
+
   const response = await fetch(`${API_BASE_URL}/tasks/${activityId}/grade`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ students: studentsData }),
+    body: JSON.stringify(dataWithAudit),
   });
 
   return response;
 };
 
-export const deleteActivity = async (idActivity) => {
+export const updateTask = async (taskData, updatedBy) => {
+  const dataWithAudit = {
+    ...taskData,
+    updated_by: updatedBy
+  };
+
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskData.task.id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(dataWithAudit),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error updating task: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+export const deleteActivity = async (idActivity, deletedBy) => {
   const response = await fetch(`${API_BASE_URL}/tasks/delete/${idActivity}`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ deleted_by: deletedBy }),
   });
 
   return await response.json();
 }
 
-export const submitTaskFiles = async (taskId, studentId, files) => {
+export const submitTaskFiles = async (taskId, studentId, files, updatedBy) => {
   const response = await fetch(`${API_BASE_URL}/tasks/submit`, {
     method: "POST",
     headers: {
@@ -93,7 +128,8 @@ export const submitTaskFiles = async (taskId, studentId, files) => {
     body: JSON.stringify({
       taskId,
       studentId,
-      files
+      files,
+      updated_by: updatedBy
     }),
   });
 
@@ -104,7 +140,7 @@ export const submitTaskFiles = async (taskId, studentId, files) => {
   return await response.json();
 };
 
-export const cancelSubmitTaskFiles = async (taskId, studentId) => { 
+export const cancelSubmitTaskFiles = async (taskId, studentId, updatedBy) => { 
   const response = await fetch(`${API_BASE_URL}/tasks/cancel-submit`, {
     method: "POST",
     headers: {
@@ -112,7 +148,8 @@ export const cancelSubmitTaskFiles = async (taskId, studentId) => {
     },
     body: JSON.stringify({
       taskId,
-      studentId
+      studentId,
+      updated_by: updatedBy
     })
   });
     

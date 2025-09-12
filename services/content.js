@@ -1,6 +1,6 @@
 import { API_BASE_URL } from './apiConfig';
 
-export const uploadContent = async (courseId, subjectId, managementId, fileData) => {
+export const uploadContent = async (courseId, subjectId, managementId, fileData, createdBy) => {
   try {
     const url = `${API_BASE_URL}/content/${courseId}/${subjectId}/${managementId}`;
     
@@ -9,7 +9,8 @@ export const uploadContent = async (courseId, subjectId, managementId, fileData)
       file: {
         name: fileData.name,
         url: fileData.url
-      }
+      },
+      created_by: createdBy
     };
 
     console.log('Enviando petición:', {
@@ -60,14 +61,15 @@ export const getContent = async (courseId, subjectId, managementId) => {
 };
 
 //delete content
-export const deleteContent = async (id) => {
+export const deleteContent = async (id, deletedBy) => {
   try {
     const url = `${API_BASE_URL}/content/${id}`;
     const response = await fetch(url, { 
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({ deleted_by: deletedBy })
     });
 
     const responseText = await response.text();

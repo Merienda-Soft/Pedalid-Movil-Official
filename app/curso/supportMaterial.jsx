@@ -120,7 +120,8 @@ export default function SupportMaterialScreen() {
             Number(globalState.cursoid),
             Number(globalState.materiaid),
             Number(globalState.management.id),
-            uploadedFile
+            uploadedFile,
+            globalState.teacherid
           );
 
           console.log('Respuesta del endpoint:', response);
@@ -322,7 +323,7 @@ export default function SupportMaterialScreen() {
               }
 
               // 2. Eliminar del backend
-              const response = await deleteContent(fileData.id);
+              const response = await deleteContent(fileData.id, globalState.teacherid);
               
               if (response.ok) {
                 // Actualizar la lista de archivos

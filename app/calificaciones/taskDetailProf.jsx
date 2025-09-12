@@ -21,11 +21,14 @@ import {
   getTaskByIdwithassignments,
   updateActivity,
 } from "../../services/activity";
+import { useGlobalState } from "../../services/UserContext";
 import { handleError } from "../../utils/errorHandler";
 
 export default function TaskDetailProf() {
   const colorScheme = useColorScheme();
   const route = useRoute();
+  const { globalState } = useGlobalState();
+  const { teacherid } = globalState;
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [qualification, setQualification] = useState("");
@@ -146,7 +149,7 @@ export default function TaskDetailProf() {
         },
       ];
 
-      const response = await updateActivity(taskId, studentsData);
+      const response = await updateActivity(taskId, studentsData, teacherid);
 
       if (response.ok) {
         Alert.alert("Éxito", "Calificación guardada correctamente");

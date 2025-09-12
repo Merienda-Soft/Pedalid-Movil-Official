@@ -9,7 +9,7 @@ import { ButtonLink } from '../../components/ButtonLink';
 import EvaluationToolSelector from '../../components/EvaluationToolSelector';
 import RubricBuilder from '../../components/RubricBuilderNew';
 import ChecklistBuilder from '../../components/ChecklistBuilderNew';
-import { updateActivity, getActivityById } from '../../services/activity';
+import { updateActivity, getActivityById, updateTask } from '../../services/activity';
 import { useGlobalState } from '../../services/UserContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useColorScheme } from 'react-native';
@@ -381,7 +381,7 @@ export default function EditTaskScreen() {
             };
 
             console.log('Enviando actualización:', updatedTask);
-            const response = await updateActivity(updatedTask);
+            const response = await updateTask(updatedTask, teacherid);
 
             if (response.ok) {
                 Alert.alert("Éxito", "Tarea actualizada correctamente");

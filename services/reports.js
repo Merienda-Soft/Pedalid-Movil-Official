@@ -13,7 +13,6 @@ export const getReportsByCurso = async (professorId, cursoId, managementId, quar
     });
 
     const url = `${API_BASE_URL}/tasks/course/${cursoId}/professor/${professorId}/management/${managementId}`;
-    console.log('URL de la petición:', url);
 
     const response = await fetch(url);
 

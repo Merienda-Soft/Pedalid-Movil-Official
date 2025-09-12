@@ -261,7 +261,7 @@ export default function AttendanceScreen() {
         console.log("Enviando actualización:", JSON.stringify(updateData));
         
         // Usar el endpoint de actualización
-        const response = await updateAttendanceRecord(updateData);
+        const response = await updateAttendanceRecord(updateData, teacherid);
         
         if (response && response.ok) {
           Alert.alert('Éxito', 'Asistencia actualizada correctamente');
@@ -288,7 +288,7 @@ export default function AttendanceScreen() {
           status_attendance: attendances[studentId]
         }));
         
-        const response = await registerAttendance(attendanceData, recordsData);
+        const response = await registerAttendance(attendanceData, recordsData, teacherid);
         
         if (response && response.ok) {
           // Guardar el ID de asistencia recién creada si está disponible

@@ -5,6 +5,7 @@ import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { useRoute } from '@react-navigation/native';
 import { getTaskByIdwithassignments, submitTaskFiles, cancelSubmitTaskFiles } from '../../services/activity';
+import { useGlobalState } from '../../services/UserContext';
 import { handleError } from '../../utils/errorHandler';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import * as DocumentPicker from 'expo-document-picker';
@@ -14,6 +15,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 export default function TaskDetailScreen() {
   const colorScheme = useColorScheme();
   const route = useRoute();
+  const { globalState } = useGlobalState();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -143,7 +145,7 @@ export default function TaskDetailScreen() {
       }
 
       // 2. Enviar información a tu API
-      const response = await submitTaskFiles(taskId, studentId, uploadedFiles);
+      const response = await submitTaskFiles(taskId, studentId, uploadedFiles, globalState.studentid || globalState.teacherid);
       
       if (response.ok) {
         // 3. Actualizar el estado de la tarea
@@ -183,7 +185,7 @@ export default function TaskDetailScreen() {
       }
 
       // 2. Cancelar el envío en el backend
-      const response = await cancelSubmitTaskFiles(taskId, studentId);
+      const response = await cancelSubmitTaskFiles(taskId, studentId, globalState.studentid || globalState.teacherid);
       if (response.ok) {
         // 3. Actualizar el estado de la tarea
         await fetchTaskDetails();

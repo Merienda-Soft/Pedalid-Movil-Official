@@ -43,6 +43,17 @@ export default function EvaluationToolViewer({
       let totalScore = 0;
       let totalWeight = 0;
 
+      // Primero calcular el peso total para normalizar
+      rubric.criteria?.forEach((criterion) => {
+        totalWeight += criterion.weight || 0;
+      });
+
+      // Si no hay pesos asignados, no se puede calcular
+      if (totalWeight === 0) {
+        return 0;
+      }
+
+      // Calcular el puntaje ponderado basado en los pesos
       rubric.criteria?.forEach((criterion) => {
         if (
           criterion.selected !== undefined &&
@@ -50,15 +61,16 @@ export default function EvaluationToolViewer({
         ) {
           const selectedLevel = criterion.levels[criterion.selected];
           const weight = criterion.weight || 0;
-          totalScore += selectedLevel.score * (weight / 100);
-          totalWeight += weight;
+          const maxScore = Math.max(...criterion.levels.map(level => level.score));
+          
+          // Calcular el porcentaje del nivel seleccionado respecto al máximo
+          const levelPercentage = selectedLevel.score / maxScore;
+          
+          // Aplicar el peso del criterio al puntaje total (sobre 100)
+          const weightedScore = (weight / totalWeight) * 100 * levelPercentage;
+          totalScore += weightedScore;
         }
       });
-
-      // Si no todos los criterios tienen peso asignado, calcular proporcionalmente
-      if (totalWeight === 0) {
-        return 0;
-      }
 
       return Math.round(totalScore * 100) / 100;
     } else if (updatedMethodology.type === EvaluationToolType.CHECKLIST) {

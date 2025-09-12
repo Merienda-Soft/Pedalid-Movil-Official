@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import {
   createEmptyChecklist,
@@ -13,8 +14,29 @@ import {
 } from "../types/evaluation";
 import { InputType } from "./InputType";
 import { ThemedText } from "./ThemedText";
+import { useThemeColor } from "../hooks/useThemeColor";
 
 export default function ChecklistBuilder({ initialData, onChange }) {
+  const colorScheme = useColorScheme();
+  
+  // Definir colores según el tema
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  
+  const theme = {
+    background: backgroundColor,
+    text: textColor,
+    card: colorScheme === 'dark' ? '#2A2A2A' : '#FAFAFA',
+    border: colorScheme === 'dark' ? '#404040' : '#E0E0E0',
+    surface: colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
+    subtext: colorScheme === 'dark' ? '#A0A0A0' : '#6C757D',
+    primary: '#17A2B8',
+    danger: '#FF6B6B',
+    empty: colorScheme === 'dark' ? '#2A2A2A' : '#F8F9FA',
+    checkboxBg: colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
+    checkboxBorder: colorScheme === 'dark' ? '#404040' : '#E0E0E0',
+  };
+
   const [checklist, setChecklist] = useState(() => {
     if (initialData) {
       return {
@@ -72,7 +94,7 @@ export default function ChecklistBuilder({ initialData, onChange }) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <InputType
         label="Título de la Lista"
         value={checklist.title}
@@ -86,34 +108,43 @@ export default function ChecklistBuilder({ initialData, onChange }) {
           <ThemedText style={styles.itemsTitle}>
             Ítems de Verificación
           </ThemedText>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddItem}>
+          <TouchableOpacity 
+            style={[styles.addButton, { backgroundColor: theme.primary }]} 
+            onPress={handleAddItem}
+          >
             <Ionicons name="add" size={16} color="#FFFFFF" />
             <ThemedText style={styles.addButtonText}>Agregar</ThemedText>
           </TouchableOpacity>
         </View>
 
         {checklist.items.length === 0 ? (
-          <View style={styles.emptyState}>
-            <ThemedText style={styles.emptyText}>
+          <View style={[styles.emptyState, { 
+            backgroundColor: theme.empty, 
+            borderColor: theme.border 
+          }]}>
+            <ThemedText style={[styles.emptyText, { color: theme.subtext }]}>
               No hay ítems definidos
             </ThemedText>
-            <ThemedText style={styles.emptySubtext}>
+            <ThemedText style={[styles.emptySubtext, { color: theme.subtext }]}>
               Agrega ítems para verificar el cumplimiento
             </ThemedText>
           </View>
         ) : (
           <ScrollView nestedScrollEnabled={true} style={styles.itemsList}>
             {checklist.items.map((item, index) => (
-              <View key={index} style={styles.itemCard}>
+              <View key={index} style={[styles.itemCard, {
+                backgroundColor: theme.card,
+                borderColor: theme.border
+              }]}>
                 <View style={styles.itemHeader}>
-                  <ThemedText style={styles.itemNumber}>
+                  <ThemedText style={[styles.itemNumber, { color: theme.primary }]}>
                     Ítem {index + 1}
                   </ThemedText>
                   <TouchableOpacity
                     style={styles.removeButton}
                     onPress={() => handleRemoveItem(index)}
                   >
-                    <Ionicons name="trash" size={14} color="#FF6B6B" />
+                    <Ionicons name="trash" size={14} color={theme.danger} />
                   </TouchableOpacity>
                 </View>
 
@@ -121,7 +152,10 @@ export default function ChecklistBuilder({ initialData, onChange }) {
                   <TouchableOpacity
                     style={[
                       styles.checkbox,
-                      item.required && styles.checkboxChecked,
+                      {
+                        backgroundColor: item.required ? theme.primary : theme.checkboxBg,
+                        borderColor: item.required ? theme.primary : theme.checkboxBorder,
+                      }
                     ]}
                     onPress={() =>
                       updateItem(index, "required", !item.required)
@@ -131,7 +165,7 @@ export default function ChecklistBuilder({ initialData, onChange }) {
                       <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                     )}
                   </TouchableOpacity>
-                  <ThemedText style={styles.requiredLabel}>
+                  <ThemedText style={[styles.requiredLabel, { color: theme.subtext }]}>
                     Ítem obligatorio
                   </ThemedText>
                 </View>
@@ -178,7 +212,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 4,
-    backgroundColor: "#17A2B8",
     gap: 4,
   },
   addButtonText: {
@@ -191,11 +224,9 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     borderWidth: 1,
-    borderColor: "#E0E0E0",
     borderRadius: 6,
     padding: 12,
     marginBottom: 12,
-    backgroundColor: "#FAFAFA",
   },
   itemHeader: {
     flexDirection: "row",
@@ -206,7 +237,6 @@ const styles = StyleSheet.create({
   itemNumber: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#17A2B8",
   },
   removeButton: {
     padding: 4,
@@ -221,38 +251,27 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderWidth: 2,
-    borderColor: "#E0E0E0",
     borderRadius: 3,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  checkboxChecked: {
-    backgroundColor: "#17A2B8",
-    borderColor: "#17A2B8",
   },
   requiredLabel: {
     fontSize: 12,
-    color: "#6C757D",
   },
   emptyState: {
     alignItems: "center",
     padding: 24,
-    backgroundColor: "#F8F9FA",
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
     borderStyle: "dashed",
   },
   emptyText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#6C757D",
   },
   emptySubtext: {
     fontSize: 12,
     marginTop: 4,
     textAlign: "center",
-    color: "#6C757D",
   },
 });

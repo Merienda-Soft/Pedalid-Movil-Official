@@ -1,5 +1,5 @@
 export const BtnColors = {
-    primary: '#007BFF',
+    primary: '#17A2B8',
     secondary: '#6C757D',
     success: '#28A745',
     danger: '#DC3545',

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import {
   createEmptyRubric,
@@ -14,8 +15,27 @@ import {
 } from "../types/evaluation";
 import { InputType } from "./InputType";
 import { ThemedText } from "./ThemedText";
+import { useThemeColor } from "../hooks/useThemeColor";
 
 export default function RubricBuilder({ initialData, onChange }) {
+  const colorScheme = useColorScheme();
+  
+  // Definir colores según el tema
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  
+  const theme = {
+    background: backgroundColor,
+    text: textColor,
+    card: colorScheme === 'dark' ? '#2A2A2A' : '#FAFAFA',
+    border: colorScheme === 'dark' ? '#404040' : '#E0E0E0',
+    surface: colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
+    subtext: colorScheme === 'dark' ? '#A0A0A0' : '#6C757D',
+    primary: '#17A2B8',
+    danger: '#FF6B6B',
+    empty: colorScheme === 'dark' ? '#2A2A2A' : '#F8F9FA',
+  };
+
   const [rubric, setRubric] = useState(() => {
     if (initialData) {
       return {
@@ -86,7 +106,7 @@ export default function RubricBuilder({ initialData, onChange }) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <InputType
         label="Título de la Rúbrica"
         value={rubric.title}
@@ -101,7 +121,7 @@ export default function RubricBuilder({ initialData, onChange }) {
             Criterios de Evaluación
           </ThemedText>
           <TouchableOpacity
-            style={styles.addButton}
+            style={[styles.addButton, { backgroundColor: theme.primary }]}
             onPress={handleAddCriterion}
           >
             <Ionicons name="add" size={16} color="#FFFFFF" />
@@ -110,27 +130,33 @@ export default function RubricBuilder({ initialData, onChange }) {
         </View>
 
         {rubric.criteria.length === 0 ? (
-          <View style={styles.emptyState}>
-            <ThemedText style={styles.emptyText}>
+          <View style={[styles.emptyState, { 
+            backgroundColor: theme.empty, 
+            borderColor: theme.border 
+          }]}>
+            <ThemedText style={[styles.emptyText, { color: theme.subtext }]}>
               No hay criterios definidos
             </ThemedText>
-            <ThemedText style={styles.emptySubtext}>
+            <ThemedText style={[styles.emptySubtext, { color: theme.subtext }]}>
               Agrega criterios para evaluar el desempeño
             </ThemedText>
           </View>
         ) : (
           <ScrollView nestedScrollEnabled={true} style={styles.criteriaList}>
             {rubric.criteria.map((criterion, criterionIndex) => (
-              <View key={criterionIndex} style={styles.criterionCard}>
+              <View key={criterionIndex} style={[styles.criterionCard, {
+                backgroundColor: theme.card,
+                borderColor: theme.border
+              }]}>
                 <View style={styles.criterionHeader}>
-                  <ThemedText style={styles.criterionNumber}>
+                  <ThemedText style={[styles.criterionNumber, { color: theme.primary }]}>
                     Criterio {criterionIndex + 1}
                   </ThemedText>
                   <TouchableOpacity
                     style={styles.removeButton}
                     onPress={() => handleRemoveCriterion(criterionIndex)}
                   >
-                    <Ionicons name="trash" size={14} color="#FF6B6B" />
+                    <Ionicons name="trash" size={14} color={theme.danger} />
                   </TouchableOpacity>
                 </View>
 
@@ -163,7 +189,10 @@ export default function RubricBuilder({ initialData, onChange }) {
                 </ThemedText>
 
                 {criterion.levels.map((level, levelIndex) => (
-                  <View key={levelIndex} style={styles.levelCard}>
+                  <View key={levelIndex} style={[styles.levelCard, {
+                    backgroundColor: theme.surface,
+                    borderColor: theme.border
+                  }]}>
                     <View style={styles.levelRow}>
                       <View style={styles.levelDescription}>
                         <InputType
@@ -236,7 +265,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 4,
-    backgroundColor: "#17A2B8",
     gap: 4,
   },
   addButtonText: {
@@ -249,11 +277,9 @@ const styles = StyleSheet.create({
   },
   criterionCard: {
     borderWidth: 1,
-    borderColor: "#E0E0E0",
     borderRadius: 6,
     padding: 12,
     marginBottom: 12,
-    backgroundColor: "#FAFAFA",
   },
   criterionHeader: {
     flexDirection: "row",
@@ -264,7 +290,6 @@ const styles = StyleSheet.create({
   criterionNumber: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#17A2B8",
   },
   removeButton: {
     padding: 4,
@@ -276,12 +301,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   levelCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 4,
     padding: 8,
     marginBottom: 6,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
   },
   levelRow: {
     flexDirection: "row",
@@ -296,21 +319,17 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     padding: 24,
-    backgroundColor: "#F8F9FA",
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
     borderStyle: "dashed",
   },
   emptyText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#6C757D",
   },
   emptySubtext: {
     fontSize: 12,
     marginTop: 4,
     textAlign: "center",
-    color: "#6C757D",
   },
 });

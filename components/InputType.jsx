@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { TextInput, StyleSheet, View, TouchableOpacity, Platform, Keyboard, Alert } from 'react-native';
+import { TextInput, StyleSheet, View, TouchableOpacity, Platform, Keyboard, Alert, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ThemedText } from './ThemedText';
@@ -13,9 +13,22 @@ export function InputType({
   onChangeText,
   type = 'text',
   secureTextEntry,
-  placeholder = ''
+  placeholder = '',
+  multiline = false,
+  keyboardType = 'default'
 }) {
+  const colorScheme = useColorScheme();
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const backgroundColor = useThemeColor({}, 'background');
+  
+  // Definir colores dinámicos para el input
+  const theme = {
+    inputBg: colorScheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
+    inputBorder: colorScheme === 'dark' ? '#404040' : '#CCCCCC',
+    inputText: color,
+    placeholder: colorScheme === 'dark' ? '#A0A0A0' : '#999999',
+  };
+  
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const formatDate = (date) => {
@@ -55,8 +68,7 @@ export function InputType({
 
   const getInputProps = () => {
     const baseProps = {
-      style: [{ color }, styles.input],
-      placeholderTextColor: color,
+      style: styles.input,
       autoCapitalize: "none",
     };
 
@@ -77,7 +89,6 @@ export function InputType({
       case 'textarea':
         return {
           ...baseProps,
-          style: [...baseProps.style, styles.textarea],
           multiline: true,
           value,
           onChangeText,
@@ -95,10 +106,20 @@ export function InputType({
   return (
     <View style={styles.container}>
       <ThemedText type="defaultSemiBold">{label}</ThemedText>
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, {
+        backgroundColor: theme.inputBg,
+        borderColor: theme.inputBorder,
+      }]}>
         <TextInput
           {...getInputProps()}
           placeholder={placeholder}
+          placeholderTextColor={theme.placeholder}
+          style={[styles.input, { 
+            color: theme.inputText,
+            ...(multiline && styles.textarea)
+          }]}
+          multiline={multiline}
+          keyboardType={keyboardType}
         />
         {type === 'date' && (
           <TouchableOpacity onPress={handleOpenDatePicker} style={styles.dateButton}>
@@ -129,10 +150,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   input: {
     flex: 1,

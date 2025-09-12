@@ -1,12 +1,27 @@
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View, useColorScheme } from "react-native";
 import { EvaluationToolType } from "../types/evaluation";
 import { ThemedText } from "./ThemedText";
+import { useThemeColor } from "../hooks/useThemeColor";
 
 export default function EvaluationToolSelector({
   selectedType,
   onChange,
   colors = {},
 }) {
+  const colorScheme = useColorScheme();
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  
+  const theme = {
+    background: backgroundColor,
+    text: textColor,
+    button: colorScheme === 'dark' ? '#2A2A2A' : '#F8F9FA',
+    buttonBorder: colorScheme === 'dark' ? '#404040' : '#E0E0E0',
+    buttonText: colorScheme === 'dark' ? '#FFFFFF' : '#333333',
+    primary: '#17A2B8',
+    clear: colorScheme === 'dark' ? '#FF6B6B' : '#FF5252',
+  };
+
   return (
     <View style={styles.container}>
       <ThemedText style={styles.label}>Tipo de Evaluación</ThemedText>
@@ -14,15 +29,19 @@ export default function EvaluationToolSelector({
         <TouchableOpacity
           style={[
             styles.button,
-            selectedType === EvaluationToolType.RUBRIC && styles.buttonSelected,
+            {
+              backgroundColor: selectedType === EvaluationToolType.RUBRIC ? theme.primary : theme.button,
+              borderColor: selectedType === EvaluationToolType.RUBRIC ? theme.primary : theme.buttonBorder,
+            }
           ]}
           onPress={() => onChange(EvaluationToolType.RUBRIC)}
         >
           <ThemedText
             style={[
               styles.buttonText,
-              selectedType === EvaluationToolType.RUBRIC &&
-                styles.buttonTextSelected,
+              {
+                color: selectedType === EvaluationToolType.RUBRIC ? '#FFFFFF' : theme.buttonText,
+              }
             ]}
           >
             Rúbrica
@@ -32,16 +51,19 @@ export default function EvaluationToolSelector({
         <TouchableOpacity
           style={[
             styles.button,
-            selectedType === EvaluationToolType.CHECKLIST &&
-              styles.buttonSelected,
+            {
+              backgroundColor: selectedType === EvaluationToolType.CHECKLIST ? theme.primary : theme.button,
+              borderColor: selectedType === EvaluationToolType.CHECKLIST ? theme.primary : theme.buttonBorder,
+            }
           ]}
           onPress={() => onChange(EvaluationToolType.CHECKLIST)}
         >
           <ThemedText
             style={[
               styles.buttonText,
-              selectedType === EvaluationToolType.CHECKLIST &&
-                styles.buttonTextSelected,
+              {
+                color: selectedType === EvaluationToolType.CHECKLIST ? '#FFFFFF' : theme.buttonText,
+              }
             ]}
           >
             Lista de Cotejo
@@ -50,7 +72,7 @@ export default function EvaluationToolSelector({
 
         {selectedType && (
           <TouchableOpacity
-            style={styles.clearButton}
+            style={[styles.clearButton, { backgroundColor: theme.clear }]}
             onPress={() => onChange(null)}
           >
             <ThemedText style={styles.clearButtonText}>Limpiar</ThemedText>
@@ -80,31 +102,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
-    backgroundColor: "#F8F9FA",
-  },
-  buttonSelected: {
-    backgroundColor: "#17A2B8",
-    borderColor: "#17A2B8",
   },
   buttonText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#333333",
-  },
-  buttonTextSelected: {
-    color: "#FFFFFF",
   },
   clearButton: {
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 6,
-    backgroundColor: "#F8F9FA",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
   },
   clearButtonText: {
-    fontSize: 12,
-    color: "#6C757D",
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#FFFFFF",
   },
 });

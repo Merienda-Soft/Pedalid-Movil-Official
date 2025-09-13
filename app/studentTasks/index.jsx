@@ -87,12 +87,16 @@ export default function StudentTasksScreen() {
         managementId
       );
 
+      console.log("Response completa:", response);
+
       if (response.ok && response.data) {
-        const transformedTasks = response.data.map((task) => ({
-          ...task,
-          createDate: new Date(task.create_date),
-          status: task.assignments?.[0]?.status ?? 0,
-        }));
+        const transformedTasks = response.data.map((task) => {
+          return {
+            ...task,
+            createDate: new Date(task.created_at), // Cambiar de create_date a created_at
+            status: task.assignments?.[0]?.status ?? 0,
+          };
+        });
         setTasks(transformedTasks);
       } else {
         console.log("No tasks found or invalid response");
@@ -153,21 +157,27 @@ export default function StudentTasksScreen() {
 
   // Filtrado de tareas
   const filteredTasks = useMemo(() => {
+    
     return tasks.filter((task) => {
       const taskCreateDate = task.createDate;
+      
       const matchesSearch = task.name
         .toLowerCase()
         .includes(searchValue.toLowerCase());
+      
       const matchesMonth =
         taskCreateDate.getMonth() === currentDate.getMonth() &&
         taskCreateDate.getFullYear() === currentDate.getFullYear();
+      
       const matchesStatus =
         statusFilter === "ALL" ||
         (statusFilter === "PENDING" && task.status === 0) ||
         (statusFilter === "SUBMITTED" && task.status === 1) ||
         (statusFilter === "RETURNED" && task.status === 2);
+      
+      const passesFilter = matchesSearch && matchesMonth && matchesStatus;
 
-      return matchesSearch && matchesMonth && matchesStatus;
+      return passesFilter;
     });
   }, [tasks, searchValue, currentDate, statusFilter]);
 
@@ -211,7 +221,7 @@ export default function StudentTasksScreen() {
           >
             <View style={styles.titleRow}>
               <ThemedText type="title" style={{ color: theme.text }}>
-                Tareas
+                Tareasss
               </ThemedText>
               <ThemedText type="default" style={{ color: theme.subtext }}>
                 Gestión {route.params.managementYear}

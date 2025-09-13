@@ -112,20 +112,24 @@ export default function EditTaskScreen() {
         return { type: mappedType, data: mappedData };
     };
 
-    // Función auxiliar para mapear cuando los datos vienen directamente
+    // Función auxiliar para mapear cuando los datos vienen directamente desde assignments
     const mapDirectEvaluationData = (taskData) => {
-        if (!taskData.evaluation_methodology) {
+        // Buscar en assignments[0] que es donde está la metodología de evaluación
+        const assignment = taskData.assignments?.[0];
+        if (!assignment || !assignment.evaluation_methodology) {
             return { type: null, data: null };
         }
 
-        // Determinar el tipo basado en la estructura de los datos
+        // Determinar el tipo basado en assignment.type
         let evalType = null;
         
-        if (taskData.evaluation_tool_type) {
-            evalType = taskData.evaluation_tool_type;
-        } else if (taskData.evaluation_methodology.criteria) {
+        if (assignment.type === 1) {
             evalType = EvaluationToolType.RUBRIC;
-        } else if (taskData.evaluation_methodology.items) {
+        } else if (assignment.type === 2) {
+            evalType = EvaluationToolType.CHECKLIST;
+        } else if (assignment.evaluation_methodology.criteria) {
+            evalType = EvaluationToolType.RUBRIC;
+        } else if (assignment.evaluation_methodology.items) {
             evalType = EvaluationToolType.CHECKLIST;
         }
 
@@ -135,9 +139,9 @@ export default function EditTaskScreen() {
 
         let mappedData = null;
         try {
-            const methodologyData = typeof taskData.evaluation_methodology === 'string' 
-                ? JSON.parse(taskData.evaluation_methodology) 
-                : taskData.evaluation_methodology;
+            const methodologyData = typeof assignment.evaluation_methodology === 'string' 
+                ? JSON.parse(assignment.evaluation_methodology) 
+                : assignment.evaluation_methodology;
 
             if (evalType === EvaluationToolType.RUBRIC && methodologyData.criteria) {
                 mappedData = {
@@ -186,8 +190,15 @@ export default function EditTaskScreen() {
                 console.log('Cargando tarea con ID:', idTask);
                 const taskData = await getActivityById(idTask);
                 console.log('Tarea cargada:', taskData);
+                console.log('Assignments encontrados:', taskData.assignments?.length);
+                if (taskData.assignments?.[0]) {
+                    console.log('Primer assignment:', taskData.assignments[0]);
+                    console.log('Tipo de evaluación (assignment.type):', taskData.assignments[0].type);
+                    console.log('Metodología de evaluación:', taskData.assignments[0].evaluation_methodology);
+                }
                 
                 // Establecer los valores iniciales
+                console.log('📝 Estableciendo valores iniciales...');
                 setName(taskData.name || '');
                 setPonderacion(taskData.weight?.toString() || '');
                 setDescripcion(taskData.description || '');
@@ -200,19 +211,26 @@ export default function EditTaskScreen() {
                     const date = new Date(taskData.end_date);
                     const formattedDate = date.toISOString().split('T')[0];
                     setSelectedDate(formattedDate);
+                    console.log('Fecha de entrega establecida:', formattedDate);
                 }
                 
+                console.log('🔄 Procesando metodología de evaluación...');
                 // Mapear y cargar metodología de evaluación si existe
-                let mappedEvaluation = mapEvaluationToolFromBackend(taskData);
+                // Intentar primero con mapeo directo desde assignments
+                let mappedEvaluation = mapDirectEvaluationData(taskData);
+                console.log('Mapeo directo resultado:', mappedEvaluation);
                 
-                // Si no se encontró con la estructura estándar, intentar mapeo directo
+                // Si no se encontró con la estructura de assignments, intentar estructura estándar
                 if (!mappedEvaluation.type) {
-                    mappedEvaluation = mapDirectEvaluationData(taskData);
+                    console.log('Intentando mapeo estándar...');
+                    mappedEvaluation = mapEvaluationToolFromBackend(taskData);
+                    console.log('Mapeo estándar resultado:', mappedEvaluation);
                 }
                 
-                console.log('Metodología de evaluación mapeada:', mappedEvaluation);
+                console.log('Metodología de evaluación mapeada final:', mappedEvaluation);
                 
                 if (mappedEvaluation.type && mappedEvaluation.data) {
+                    console.log('✅ Configurando herramienta de evaluación:', mappedEvaluation.type);
                     setSelectedEvaluationTool(mappedEvaluation.type);
                     
                     if (mappedEvaluation.type === EvaluationToolType.RUBRIC) {
@@ -222,6 +240,8 @@ export default function EditTaskScreen() {
                         setChecklistData(mappedEvaluation.data);
                         console.log('Datos de checklist cargados:', mappedEvaluation.data);
                     }
+                } else {
+                    console.log('❌ No hay metodología de evaluación para cargar');
                 }
                 
             } catch (error) {
@@ -244,25 +264,33 @@ export default function EditTaskScreen() {
 
     // Funciones para manejar la evaluación
     const handleEvaluationToolChange = (tool) => {
+        console.log('🛠️ Cambio de herramienta de evaluación:', tool);
+        console.log('Herramienta anterior:', selectedEvaluationTool);
+        
         // Si ya hay una metodología configurada y se está cambiando, pedir confirmación
         if (selectedEvaluationTool && selectedEvaluationTool !== tool) {
+            console.log('⚠️ Cambio de herramienta detectado, pidiendo confirmación');
             Alert.alert(
                 "Cambiar Herramienta de Evaluación",
                 "¿Estás seguro de que quieres cambiar la herramienta de evaluación? Se perderán los datos actuales.",
                 [
                     {
                         text: "Cancelar",
-                        style: "cancel"
+                        style: "cancel",
+                        onPress: () => console.log('❌ Cambio de herramienta cancelado')
                     },
                     {
                         text: "Cambiar",
                         onPress: () => {
+                            console.log('✅ Confirmado cambio de herramienta a:', tool);
                             setSelectedEvaluationTool(tool);
                             // Limpiar datos de la herramienta anterior
                             if (tool !== EvaluationToolType.RUBRIC) {
+                                console.log('🧹 Limpiando datos de rúbrica');
                                 setRubricData(null);
                             }
                             if (tool !== EvaluationToolType.CHECKLIST) {
+                                console.log('🧹 Limpiando datos de checklist');
                                 setChecklistData(null);
                             }
                         }
@@ -270,95 +298,117 @@ export default function EditTaskScreen() {
                 ]
             );
         } else {
+            console.log('✅ Estableciendo herramienta:', tool);
             setSelectedEvaluationTool(tool);
             // Limpiar datos de la herramienta anterior
             if (tool !== EvaluationToolType.RUBRIC) {
+                console.log('🧹 Limpiando datos de rúbrica');
                 setRubricData(null);
             }
             if (tool !== EvaluationToolType.CHECKLIST) {
+                console.log('🧹 Limpiando datos de checklist');
                 setChecklistData(null);
             }
         }
     };
 
     const handleRubricChange = (rubric) => {
+        console.log('📝 Cambio en rúbrica:', rubric);
         setRubricData(rubric);
     };
 
     const handleChecklistChange = (checklist) => {
+        console.log('📋 Cambio en checklist:', checklist);
         setChecklistData(checklist);
-    };
-
-    const handleClearEvaluationTool = () => {
-        if (selectedEvaluationTool) {
-            Alert.alert(
-                "Eliminar Herramienta de Evaluación",
-                "¿Estás seguro de que quieres eliminar la herramienta de evaluación configurada?",
-                [
-                    {
-                        text: "Cancelar",
-                        style: "cancel"
-                    },
-                    {
-                        text: "Eliminar",
-                        style: "destructive",
-                        onPress: () => {
-                            setSelectedEvaluationTool(null);
-                            setRubricData(null);
-                            setChecklistData(null);
-                        }
-                    }
-                ]
-            );
-        }
     };
 
     
 
     const handleUpdateTask = async () => {
+        console.log('=== INICIANDO ACTUALIZACIÓN DE TAREA ===');
+        console.log('Datos del formulario:', {
+            name,
+            selectedDate,
+            ponderacion,
+            descripcion,
+            selectedValue,
+            selectedEvaluationTool,
+            rubricData,
+            checklistData
+        });
+
         if (!name || !selectedDate || !ponderacion || !descripcion) {
+            console.log('❌ Validación fallida: campos faltantes');
             Alert.alert("Error", "Por favor, completa todos los campos.");
             return;
         }
 
+        console.log('✅ Validación básica pasó');
+
         // Validar herramientas de evaluación si están seleccionadas
         if (selectedEvaluationTool === EvaluationToolType.RUBRIC && rubricData) {
+            console.log('📝 Validando rúbrica...');
             const rubricValidation = validateRubricData(rubricData);
-            if (!rubricValidation.isValid) {
-                Alert.alert("Error en Rúbrica", rubricValidation.error);
+            console.log('Resultado validación rúbrica:', rubricValidation);
+            if (!rubricValidation) {
+                console.log('❌ Validación de rúbrica falló');
+                Alert.alert("Error en Rúbrica", "La rúbrica debe tener título, criterios válidos con nombre, peso mayor a 0 y niveles definidos.");
                 return;
             }
+            console.log('✅ Validación de rúbrica pasó');
         }
 
         if (selectedEvaluationTool === EvaluationToolType.CHECKLIST && checklistData) {
+            console.log('📋 Validando lista de cotejo...');
             const checklistValidation = validateChecklistData(checklistData);
-            if (!checklistValidation.isValid) {
-                Alert.alert("Error en Lista de Cotejo", checklistValidation.error);
+            console.log('Resultado validación checklist:', checklistValidation);
+            if (!checklistValidation) {
+                console.log('❌ Validación de lista de cotejo falló');
+                Alert.alert("Error en Lista de Cotejo", "La lista de cotejo debe tener título e ítems con descripción válida.");
                 return;
             }
+            console.log('✅ Validación de lista de cotejo pasó');
         }
 
         try {
+            console.log('🔄 Preparando datos para envío...');
+            
             // Obtener la fecha actual para start_date
             const today = new Date();
             const startDate = today.toISOString();
+            console.log('Fecha inicio:', startDate);
 
             // Convertir la fecha de entrega a formato ISO con hora final del día
             const endDate = new Date(selectedDate);
             endDate.setHours(23, 59, 59, 999);
             const endDateISO = endDate.toISOString();
+            console.log('Fecha fin:', endDateISO);
 
             // Preparar la metodología de evaluación
             let evaluationMethodology = null;
             let evaluationToolType = null;
 
+            console.log('🛠️ Preparando metodología de evaluación...');
+            console.log('Herramienta seleccionada:', selectedEvaluationTool);
+            console.log('EvaluationToolType.RUBRIC:', EvaluationToolType.RUBRIC);
+            console.log('EvaluationToolType.CHECKLIST:', EvaluationToolType.CHECKLIST);
+
             if (selectedEvaluationTool === EvaluationToolType.RUBRIC && rubricData) {
+                console.log('📝 Configurando rúbrica...');
                 evaluationMethodology = rubricData;
-                evaluationToolType = EvaluationToolType.RUBRIC;
+                evaluationToolType = 1; // Cambiar a número para el backend
+                console.log('Metodología configurada (rúbrica):', evaluationMethodology);
             } else if (selectedEvaluationTool === EvaluationToolType.CHECKLIST && checklistData) {
+                console.log('📋 Configurando lista de cotejo...');
                 evaluationMethodology = checklistData;
-                evaluationToolType = EvaluationToolType.CHECKLIST;
+                evaluationToolType = 2; // Cambiar a número para el backend
+                console.log('Metodología configurada (checklist):', evaluationMethodology);
+            } else {
+                console.log('❌ Sin herramienta de evaluación o datos faltantes');
+                evaluationToolType = 0; // Sin herramienta
             }
+
+            console.log('Tipo de herramienta final:', evaluationToolType);
 
             const updatedTask = {
                 task: {
@@ -380,10 +430,17 @@ export default function EditTaskScreen() {
                 }
             };
 
-            console.log('Enviando actualización:', updatedTask);
+            console.log('📦 Datos finales a enviar:', JSON.stringify(updatedTask, null, 2));
+            
+            console.log('🌐 Enviando petición al servidor...');
             const response = await updateTask(updatedTask, teacherid);
+            
+            console.log('📨 Respuesta del servidor:', response);
+            console.log('Status de respuesta:', response.status);
+            console.log('Response.ok:', response.ok);
 
             if (response.ok) {
+                console.log('✅ Actualización exitosa');
                 Alert.alert("Éxito", "Tarea actualizada correctamente");
                 const management = globalState.management;
                 navigation.replace("curso", {
@@ -396,12 +453,23 @@ export default function EditTaskScreen() {
                     }
                 });
             } else {
-                Alert.alert("Error", "No se pudo actualizar la tarea");
+                console.log('❌ Error en la respuesta del servidor');
+                try {
+                    const errorData = await response.text();
+                    console.log('Datos de error:', errorData);
+                    Alert.alert("Error", `No se pudo actualizar la tarea. Error: ${errorData}`);
+                } catch (parseError) {
+                    console.log('Error parseando respuesta de error:', parseError);
+                    Alert.alert("Error", "No se pudo actualizar la tarea");
+                }
             }
         } catch (error) {
-            console.error('Error al actualizar:', error);
+            console.error('💥 Error en el proceso:', error);
+            console.error('Stack trace:', error.stack);
             Alert.alert("Error", `Error al actualizar la tarea: ${error.message}`);
         }
+        
+        console.log('=== FIN DEL PROCESO DE ACTUALIZACIÓN ===');
     };
 
     // Render con loading state
@@ -477,73 +545,33 @@ export default function EditTaskScreen() {
             placeholder="Describe los detalles de la tarea..."
             />
 
-          {/* Herramientas de Evaluación */}
+          {/* Herramientas de Evaluación - Mismo diseño que newTask */}
           <ThemedView style={styles.evaluationSection}>
-            <ThemedText type="subtitle" style={{ color: colors.text, marginBottom: 12 }}>
-              Herramientas de Evaluación
+            <ThemedText style={[styles.evaluationTitle, { color: colors.text }]}>
+              Herramienta de Evaluación (Opcional)
             </ThemedText>
-            
-            {/* Mostrar información actual si existe */}
-            {selectedEvaluationTool && (
-              <View style={styles.currentEvaluationInfo}>
-                <ThemedText style={[styles.currentEvaluationText, { color: colors.secondaryText }]}>
-                  Configuración actual: {selectedEvaluationTool === EvaluationToolType.RUBRIC ? 'Rúbrica' : 'Lista de Cotejo'}
-                </ThemedText>
-                {selectedEvaluationTool === EvaluationToolType.RUBRIC && rubricData && (
-                  <ThemedText style={[styles.currentEvaluationDetails, { color: colors.secondaryText }]}>
-                    • {rubricData.criteria?.length || 0} criterios configurados
-                    {rubricData.title && ` • Título: "${rubricData.title}"`}
-                  </ThemedText>
-                )}
-                {selectedEvaluationTool === EvaluationToolType.CHECKLIST && checklistData && (
-                  <ThemedText style={[styles.currentEvaluationDetails, { color: colors.secondaryText }]}>
-                    • {checklistData.items?.length || 0} ítems configurados
-                    {checklistData.title && ` • Título: "${checklistData.title}"`}
-                  </ThemedText>
-                )}
-              </View>
-            )}
-            
+
             <EvaluationToolSelector
-              selectedTool={selectedEvaluationTool}
-              onToolSelect={handleEvaluationToolChange}
-              onClear={handleClearEvaluationTool}
+              selectedType={selectedEvaluationTool}
+              onChange={handleEvaluationToolChange}
             />
 
-            {/* Renderizar el constructor de rúbrica si está seleccionado */}
             {selectedEvaluationTool === EvaluationToolType.RUBRIC && (
-              <View style={styles.builderContainer}>
-                <ThemedText style={[styles.builderTitle, { color: colors.text }]}>
-                  Editor de Rúbrica
-                </ThemedText>
-                {rubricData && rubricData.criteria?.length > 0 && (
-                  <ThemedText style={[styles.builderSubtitle, { color: colors.secondaryText }]}>
-                    Edita la configuración existente o agrega más criterios
-                  </ThemedText>
-                )}
+              <ThemedView style={styles.builderContainer}>
                 <RubricBuilder
                   initialData={rubricData}
                   onChange={handleRubricChange}
                 />
-              </View>
+              </ThemedView>
             )}
 
-            {/* Renderizar el constructor de lista de cotejo si está seleccionado */}
             {selectedEvaluationTool === EvaluationToolType.CHECKLIST && (
-              <View style={styles.builderContainer}>
-                <ThemedText style={[styles.builderTitle, { color: colors.text }]}>
-                  Editor de Lista de Cotejo
-                </ThemedText>
-                {checklistData && checklistData.items?.length > 0 && (
-                  <ThemedText style={[styles.builderSubtitle, { color: colors.secondaryText }]}>
-                    Edita la configuración existente o agrega más ítems
-                  </ThemedText>
-                )}
+              <ThemedView style={styles.builderContainer}>
                 <ChecklistBuilder
                   initialData={checklistData}
                   onChange={handleChecklistChange}
                 />
-              </View>
+              </ThemedView>
             )}
           </ThemedView>
 
@@ -595,45 +623,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     evaluationSection: {
-        marginVertical: 16,
-        padding: 16,
-        borderRadius: 12,
-        backgroundColor: 'transparent',
+        marginTop: 20,
+        marginBottom: 16,
     },
-    currentEvaluationInfo: {
-        backgroundColor: 'rgba(23, 162, 184, 0.1)',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 12,
-        borderLeftWidth: 4,
-        borderLeftColor: '#17A2B8',
-    },
-    currentEvaluationText: {
-        fontSize: 14,
-        fontStyle: 'italic',
-        marginBottom: 4,
-    },
-    currentEvaluationDetails: {
-        fontSize: 12,
-        fontStyle: 'italic',
-        opacity: 0.8,
+    evaluationTitle: {
+        fontSize: 16,
+        fontWeight: "600",
+        marginBottom: 16,
     },
     builderContainer: {
-        marginTop: 16,
-        padding: 16,
-        borderRadius: 12,
-        backgroundColor: 'rgba(23, 162, 184, 0.05)',
-        borderWidth: 1,
-        borderColor: 'rgba(23, 162, 184, 0.2)',
-    },
-    builderTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    builderSubtitle: {
-        fontSize: 13,
-        marginBottom: 12,
-        fontStyle: 'italic',
+        marginTop: 12,
     },
 });

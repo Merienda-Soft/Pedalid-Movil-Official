@@ -4,9 +4,13 @@ import React from 'react';
 import { TabBarIcon } from '../../components/navigation/TabBarIcon';
 import { Colors } from '../../constants/Colors';
 import { useColorScheme } from '../../hooks/useColorScheme';
+import { useGlobalState } from '../../services/UserContext';
 
 export default function CursoLayout() {
   const colorScheme = useColorScheme();
+  const { globalState } = useGlobalState();
+
+  const isManagementClosed = globalState?.management?.status === 0;
 
   return (
     <Tabs
@@ -30,6 +34,7 @@ export default function CursoLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name={focused ? 'add-circle' : 'add-circle-outline'} color={color} />
           ),
+          href: isManagementClosed ? null : undefined,
         }}
       />
       <Tabs.Screen

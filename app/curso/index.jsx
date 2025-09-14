@@ -74,9 +74,7 @@ export default function TasksScreen() {
 
     setIsLoading(true);
     try {
-      console.log("Fetching tasks with params:", { materiaid, cursoid, teacherid, managementId: management.id });
       const response = await getActivities(materiaid, cursoid, teacherid, management.id);
-      console.log("Received task data:", response);
       
       if (response?.ok && Array.isArray(response.data)) {
         const transformedTasks = response.data.map(task => ({
@@ -84,17 +82,17 @@ export default function TasksScreen() {
           name: task.name,
           description: task.description,
           weight: task.weight,
-          createDate: new Date(task.create_date),
+          createDate: new Date(task.created_at), // Cambiar de create_date a created_at
           end_date: new Date(task.end_date),
           subject: task.subject?.subject || '',
           dimension: task.dimension?.dimension || '',
           assignments: task.assignments || [],
           type: task.type,
         }));
-        console.log("Transformed tasks:", transformedTasks);
+        
         setTasks(transformedTasks);
       } else {
-        console.log("No tasks data received or invalid format");
+        
         setTasks([]);
       }
     } catch (error) {
@@ -180,9 +178,22 @@ export default function TasksScreen() {
   }, [materiaid, cursoid, teacherid, navigation]);
 
   const handleActionSheet = useCallback((task) => {
-    const options = ['Calificar', 'Editar', 'Eliminar'];
-    const cancelButtonIndex = 3;
-    const destructiveButtonIndex = 2;
+    // Verificar si la gestión es pasada (status 0)
+    const isManagementClosed = management?.status === 0;
+    
+    let options, cancelButtonIndex, destructiveButtonIndex;
+    
+    if (isManagementClosed) {
+      // Solo permitir ver detalles en gestiones cerradas
+      options = ['Ver Detalles'];
+      cancelButtonIndex = 1;
+      destructiveButtonIndex = -1; // No hay opción destructiva
+    } else {
+      // Opciones completas para gestiones activas
+      options = ['Calificar', 'Editar', 'Eliminar'];
+      cancelButtonIndex = 3;
+      destructiveButtonIndex = 2;
+    }
 
     showActionSheetWithOptions(
       {
@@ -192,33 +203,46 @@ export default function TasksScreen() {
         title: `Opciones de "${task.name}"`,
       },
       (buttonIndex) => {
-        switch (buttonIndex) {
-          case 0:
-            navigation.navigate('calificaciones', {
-              screen: 'index',
-              params: { idTask: task.id }
-            });
-            break;
-          case 1:
-            navigation.navigate('calificaciones', {
-              screen: 'editTask',
-              params: { idTask: task.id }
-            });
-            break;
-          case 2:
-          Alert.alert(
-              'Eliminación',
-            `¿Deseas eliminar "${task.name}"?`,
-            [
-                { text: 'No', style: 'cancel' },
-                { text: 'Sí', onPress: () => handleDeleteTask(task.id) },
-              ]
-            );
-            break;
+        if (isManagementClosed) {
+          // Solo navegación a calificaciones en modo vista
+          switch (buttonIndex) {
+            case 0:
+              navigation.navigate('calificaciones', {
+                screen: 'index',
+                params: { idTask: task.id, readOnly: true }
+              });
+              break;
+          }
+        } else {
+          // Funcionalidad completa para gestiones activas
+          switch (buttonIndex) {
+            case 0:
+              navigation.navigate('calificaciones', {
+                screen: 'index',
+                params: { idTask: task.id }
+              });
+              break;
+            case 1:
+              navigation.navigate('calificaciones', {
+                screen: 'editTask',
+                params: { idTask: task.id }
+              });
+              break;
+            case 2:
+            Alert.alert(
+                'Eliminación',
+              `¿Deseas eliminar "${task.name}"?`,
+              [
+                  { text: 'No', style: 'cancel' },
+                  { text: 'Sí', onPress: () => handleDeleteTask(task.id) },
+                ]
+              );
+              break;
+          }
         }
       }
     );
-  }, [navigation, handleDeleteTask]);
+  }, [navigation, handleDeleteTask, management?.status]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

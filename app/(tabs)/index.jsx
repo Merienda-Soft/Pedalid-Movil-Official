@@ -56,7 +56,8 @@ export default function HomeScreen() {
           if (activeManagement) {
             setSelectedManagement({
               id: activeManagement.id,
-              management: activeManagement.management
+              management: activeManagement.management,
+              status: activeManagement.status
             });
             setGlobalState(prev => ({
               ...prev,
@@ -188,7 +189,8 @@ export default function HomeScreen() {
     if (selectedMgmt && (selectedManagement?.id !== selectedMgmt.id)) {
       setSelectedManagement({
         id: selectedMgmt.id,
-        management: selectedMgmt.management
+        management: selectedMgmt.management,
+        status: selectedMgmt.status
       });
       setGlobalState(prev => ({
         ...prev,
@@ -214,6 +216,7 @@ export default function HomeScreen() {
       Alert.alert('Error', 'Datos incompletos para acceder al curso');
       return;
     }
+
     
     setGlobalState(prevState => ({
       ...prevState,

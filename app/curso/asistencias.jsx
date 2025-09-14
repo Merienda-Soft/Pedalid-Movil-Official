@@ -21,6 +21,9 @@ export default function AttendanceScreen() {
   const { globalState } = useGlobalState();
   const { cursoid, materiaid, cursoName, teacherid, management } = globalState;
   
+  // Verificar si la gestión está cerrada
+  const isManagementClosed = globalState?.management?.status === 0;
+  
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [students, setStudents] = useState([]);
@@ -181,6 +184,12 @@ export default function AttendanceScreen() {
 
   // Manejar el cambio de asistencia
   const handleAttendanceChange = (studentId, status) => {
+    // Verificar si la gestión está cerrada
+    if (isManagementClosed) {
+      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden modificar las asistencias.');
+      return;
+    }
+
     setAttendances(prev => {
       const currentValue = prev[studentId];
       
@@ -205,6 +214,12 @@ export default function AttendanceScreen() {
 
   // Guardar la asistencia
   const handleSaveAttendance = async () => {
+    // Verificar si la gestión está cerrada
+    if (isManagementClosed) {
+      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden registrar o modificar asistencias.');
+      return;
+    }
+
     setSaving(true);
     try {
       const dateString = formatDate(selectedDate);
@@ -336,6 +351,20 @@ export default function AttendanceScreen() {
       }
     >
       <ThemedView style={styles.container}>
+        {/* Mensaje de gestión cerrada */}
+        {isManagementClosed && (
+          <View style={[styles.closedManagementMessage, { backgroundColor: '#FFF3CD', borderColor: '#F0E68C' }]}>
+            <Ionicons
+              name="lock-closed"
+              size={20}
+              color="#856404"
+            />
+            <Text style={[styles.closedManagementText, { color: '#856404' }]}>
+              Esta gestión está cerrada. Solo puedes ver las asistencias, no realizar modificaciones.
+            </Text>
+          </View>
+        )}
+
         {/* Cabecera compacta con título y fecha */}
         <View style={styles.headerRow}>
           <View>
@@ -415,9 +444,11 @@ export default function AttendanceScreen() {
                         style={[styles.attendanceButton, { 
                           backgroundColor: currentStatus === ATTENDANCE_STATES.PRESENT ? 
                             theme.success : 'transparent',
-                          borderColor: theme.success
+                          borderColor: theme.success,
+                          opacity: isManagementClosed ? 0.4 : 1
                         }]}
                         onPress={() => handleAttendanceChange(student.student_id, ATTENDANCE_STATES.PRESENT)}
+                        disabled={isManagementClosed}
                       >
                         <Text style={{ 
                           color: currentStatus === ATTENDANCE_STATES.PRESENT ? '#FFFFFF' : theme.success,
@@ -430,9 +461,11 @@ export default function AttendanceScreen() {
                         style={[styles.attendanceButton, { 
                           backgroundColor: currentStatus === ATTENDANCE_STATES.ABSENT ? 
                             theme.error : 'transparent',
-                          borderColor: theme.error
+                          borderColor: theme.error,
+                          opacity: isManagementClosed ? 0.4 : 1
                         }]}
                         onPress={() => handleAttendanceChange(student.student_id, ATTENDANCE_STATES.ABSENT)}
+                        disabled={isManagementClosed}
                       >
                         <Text style={{ 
                           color: currentStatus === ATTENDANCE_STATES.ABSENT ? '#FFFFFF' : theme.error,
@@ -445,9 +478,11 @@ export default function AttendanceScreen() {
                         style={[styles.attendanceButton, { 
                           backgroundColor: currentStatus === ATTENDANCE_STATES.JUSTIFIED ? 
                             theme.warning : 'transparent',
-                          borderColor: theme.warning
+                          borderColor: theme.warning,
+                          opacity: isManagementClosed ? 0.4 : 1
                         }]}
                         onPress={() => handleAttendanceChange(student.student_id, ATTENDANCE_STATES.JUSTIFIED)}
+                        disabled={isManagementClosed}
                       >
                         <Text style={{ 
                           color: currentStatus === ATTENDANCE_STATES.JUSTIFIED ? '#FFFFFF' : theme.warning,
@@ -465,9 +500,15 @@ export default function AttendanceScreen() {
         
         {/* Botón de guardar */}
         <TouchableOpacity
-          style={[styles.saveButton, { opacity: saving ? 0.7 : 1 }]}
+          style={[
+            styles.saveButton, 
+            { 
+              opacity: (saving || isManagementClosed) ? 0.4 : 1,
+              backgroundColor: isManagementClosed ? theme.subtext : theme.primary
+            }
+          ]}
           onPress={handleSaveAttendance}
-          disabled={saving}
+          disabled={saving || isManagementClosed}
         >
           {saving ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
@@ -587,5 +628,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
+  },
+  closedManagementMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  closedManagementText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
 });

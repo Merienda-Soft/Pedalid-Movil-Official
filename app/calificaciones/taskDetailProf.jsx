@@ -29,6 +29,10 @@ export default function TaskDetailProf() {
   const route = useRoute();
   const { globalState } = useGlobalState();
   const { teacherid } = globalState;
+  
+  // Verificar si la gestión está cerrada
+  const isManagementClosed = globalState?.management?.status === 0;
+  
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [qualification, setQualification] = useState("");
@@ -112,6 +116,12 @@ export default function TaskDetailProf() {
   }, []);
 
   const handleSaveQualification = async () => {
+    // Prevenir guardado en gestiones cerradas
+    if (isManagementClosed) {
+      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden modificar las calificaciones.');
+      return;
+    }
+    
     // Si está evaluada (status 2), mostrar confirmación primero
     if (assignment?.status === 2) {
       Alert.alert(
@@ -260,6 +270,20 @@ export default function TaskDetailProf() {
 
           {/* Contenido scrolleable */}
           <View style={styles.contentContainer}>
+            {/* Mensaje de gestión cerrada */}
+            {isManagementClosed && (
+              <View style={[styles.closedManagementMessage, { backgroundColor: '#FFF3CD', borderColor: '#F0E68C' }]}>
+                <Ionicons
+                  name="lock-closed"
+                  size={20}
+                  color="#856404"
+                />
+                <ThemedText style={[styles.closedManagementText, { color: '#856404' }]}>
+                  Esta gestión está cerrada. Solo puedes ver la información, no realizar modificaciones.
+                </ThemedText>
+              </View>
+            )}
+
             {/* Información del estudiante */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
               <ThemedText style={styles.sectionTitle}>
@@ -321,7 +345,7 @@ export default function TaskDetailProf() {
                   methodology={evaluationMethodology}
                   onScoreChange={handleScoreChange}
                   onEvaluationChange={handleEvaluationChange}
-                  isEditable={assignment?.status !== 2}
+                  isEditable={assignment?.status !== 2 && !isManagementClosed}
                 />
               </View>
             )}
@@ -364,6 +388,10 @@ export default function TaskDetailProf() {
                       backgroundColor:
                         colorScheme === "dark" ? "#1E1E1E" : "#F5F5F5",
                     },
+                    isManagementClosed && {
+                      backgroundColor: colorScheme === "dark" ? "#2A2A2A" : "#E5E5E5",
+                      opacity: 0.6
+                    }
                   ]}
                   value={qualification}
                   onChangeText={setQualification}
@@ -371,16 +399,20 @@ export default function TaskDetailProf() {
                   placeholderTextColor={theme.subtext}
                   keyboardType="numeric"
                   maxLength={3}
-                  editable={!evaluationMethodology} // Deshabilitar si hay metodología de evaluación
+                  editable={!evaluationMethodology && !isManagementClosed} // Deshabilitar si hay metodología de evaluación o gestión cerrada
                 />
 
                 <TouchableOpacity
                   style={[
                     styles.saveButton,
                     { backgroundColor: theme.primary },
+                    isManagementClosed && {
+                      backgroundColor: theme.subtext,
+                      opacity: 0.5
+                    }
                   ]}
                   onPress={handleSaveQualification}
-                  disabled={saving}
+                  disabled={saving || isManagementClosed}
                 >
                   {saving ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
@@ -412,6 +444,10 @@ export default function TaskDetailProf() {
                       backgroundColor:
                         colorScheme === "dark" ? "#1E1E1E" : "#F5F5F5",
                     },
+                    isManagementClosed && {
+                      backgroundColor: colorScheme === "dark" ? "#2A2A2A" : "#E5E5E5",
+                      opacity: 0.6
+                    }
                   ]}
                   value={comment}
                   onChangeText={setComment}
@@ -420,6 +456,7 @@ export default function TaskDetailProf() {
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
+                  editable={!isManagementClosed}
                 />
               </View>
             </View>
@@ -664,6 +701,20 @@ const styles = StyleSheet.create({
   },
   evaluationNoteText: {
     fontSize: 14,
+    flex: 1,
+  },
+  closedManagementMessage: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  closedManagementText: {
+    fontSize: 14,
+    fontWeight: "500",
     flex: 1,
   },
 });

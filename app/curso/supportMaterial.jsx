@@ -20,6 +20,9 @@ export default function SupportMaterialScreen() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Verificar si la gestión está cerrada
+  const isManagementClosed = globalState?.management?.status === 0;
+
   // Definir colores basados en el tema
   const theme = {
     background: colorScheme === 'dark' ? '#1D3D47' : '#F5F5F5',
@@ -64,6 +67,12 @@ export default function SupportMaterialScreen() {
   };
 
   const handleUploadFile = async () => {
+    // Verificar si la gestión está cerrada
+    if (isManagementClosed) {
+      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden subir archivos.');
+      return;
+    }
+
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
@@ -299,6 +308,12 @@ export default function SupportMaterialScreen() {
 
   // Función para manejar la eliminación de archivos
   const handleDeleteFile = async (fileData) => {
+    // Verificar si la gestión está cerrada
+    if (isManagementClosed) {
+      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden eliminar archivos.');
+      return;
+    }
+
     Alert.alert(
       'Confirmar eliminación',
       '¿Está seguro que desea eliminar este archivo?',
@@ -364,6 +379,20 @@ export default function SupportMaterialScreen() {
       }
     >
       <ThemedView style={styles.container}>
+        {/* Mensaje de gestión cerrada */}
+        {isManagementClosed && (
+          <View style={[styles.closedManagementMessage, { backgroundColor: '#FFF3CD', borderColor: '#F0E68C' }]}>
+            <Ionicons
+              name="lock-closed"
+              size={20}
+              color="#856404"
+            />
+            <ThemedText style={[styles.closedManagementText, { color: '#856404' }]}>
+              Esta gestión está cerrada. Solo puedes ver el material, no subir ni eliminar archivos.
+            </ThemedText>
+          </View>
+        )}
+
         {/* Cabecera */}
         <View style={styles.titleContainer}>
           {/* Primera fila: solo el título */}
@@ -413,11 +442,11 @@ export default function SupportMaterialScreen() {
         {/* Botón de subida */}
         <TouchableOpacity 
           style={[styles.uploadButton, { 
-            backgroundColor: theme.primary,
-            opacity: isUploading ? 0.7 : 1 
+            backgroundColor: isManagementClosed ? theme.subtext : theme.primary,
+            opacity: (isUploading || isManagementClosed) ? 0.4 : 1 
           }]}
           onPress={handleUploadFile}
-          disabled={isUploading}
+          disabled={isUploading || isManagementClosed}
         >
           {isUploading ? (
             <View style={styles.uploadingContainer}>
@@ -467,16 +496,18 @@ export default function SupportMaterialScreen() {
                     </ThemedText>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.deleteButton}
-                  onPress={() => handleDeleteFile(fileData)}
-                >
-                  <Ionicons 
-                    name="trash-outline" 
-                    size={20} 
-                    color={theme.error}
-                  />
-                </TouchableOpacity>
+                {!isManagementClosed && (
+                  <TouchableOpacity 
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteFile(fileData)}
+                  >
+                    <Ionicons 
+                      name="trash-outline" 
+                      size={20} 
+                      color={theme.error}
+                    />
+                  </TouchableOpacity>
+                )}
               </View>
             ))
           )}
@@ -626,5 +657,20 @@ const styles = StyleSheet.create({
   },
   fileDate: {
     fontSize: 12,
+  },
+  closedManagementMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 16,
+    marginHorizontal: 16,
+  },
+  closedManagementText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
 });

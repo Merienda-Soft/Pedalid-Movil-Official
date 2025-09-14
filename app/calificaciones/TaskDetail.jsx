@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, useColorScheme, TouchableOpacity, ActivityIndicator, Image, ScrollView, Linking, RefreshControl } from 'react-native';
+import { View, StyleSheet, useColorScheme, TouchableOpacity, ActivityIndicator, Image, ScrollView, Linking, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { useRoute } from '@react-navigation/native';
 import { getTaskByIdwithassignments, submitTaskFiles, cancelSubmitTaskFiles } from '../../services/activity';
 import { useGlobalState } from '../../services/UserContext';
+import { useAuth } from '../../services/AuthProvider';
 import { handleError } from '../../utils/errorHandler';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
+import EvaluationToolViewer from '../../components/EvaluationToolViewer';
 import * as DocumentPicker from 'expo-document-picker';
 import { storage } from '../../config/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -16,6 +18,7 @@ export default function TaskDetailScreen() {
   const colorScheme = useColorScheme();
   const route = useRoute();
   const { globalState } = useGlobalState();
+  const { authuser } = useAuth();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -25,7 +28,13 @@ export default function TaskDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   
   const { studentId, taskId } = route.params;
-
+  
+  // Verificar si la gestión está cerrada
+  const isManagementClosed = globalState?.management?.status === 0;
+  
+  // Verificar si el usuario es tutor
+  const isTutor = authuser?.role === 'tutor';
+  
   // Definir colores basados en el tema
   const theme = {
     background: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
@@ -46,6 +55,7 @@ export default function TaskDetailScreen() {
   const fetchTaskDetails = async () => {
     try {
       const response = await getTaskByIdwithassignments(taskId, studentId);
+      
       if (response.ok && response.data) {
         setTask(response.data);
         const assignment = response.data.assignments?.[0];
@@ -63,6 +73,18 @@ export default function TaskDetailScreen() {
   };
 
   const handleSelectFile = async () => {
+    // Verificar si la gestión está cerrada
+    if (isManagementClosed) {
+      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden subir archivos.');
+      return;
+    }
+
+    // Verificar si el usuario es tutor
+    if (isTutor) {
+      Alert.alert('Información', 'Los tutores no pueden subir archivos en las tareas.');
+      return;
+    }
+
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*', // Todos los tipos de archivo
@@ -81,6 +103,11 @@ export default function TaskDetailScreen() {
   };
 
   const handleRemoveFile = (uri) => {
+    // Verificar si el usuario es tutor
+    if (isTutor) {
+      Alert.alert('Información', 'Los tutores no pueden modificar archivos en las tareas.');
+      return;
+    }
     setSelectedFiles(prevFiles => prevFiles.filter(file => file.uri !== uri));
   };
 
@@ -127,6 +154,18 @@ export default function TaskDetailScreen() {
   };
 
   const handleSubmit = async () => {
+    // Verificar si la gestión está cerrada
+    if (isManagementClosed) {
+      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden enviar tareas.');
+      return;
+    }
+
+    // Verificar si el usuario es tutor
+    if (isTutor) {
+      Alert.alert('Información', 'Los tutores no pueden enviar tareas.');
+      return;
+    }
+
     try {
       setIsUploading(true);
       setUploadProgress(0);
@@ -166,6 +205,18 @@ export default function TaskDetailScreen() {
   };
 
   const handleCancelSubmit = async () => {
+    // Verificar si la gestión está cerrada
+    if (isManagementClosed) {
+      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden modificar las tareas.');
+      return;
+    }
+
+    // Verificar si el usuario es tutor
+    if (isTutor) {
+      Alert.alert('Información', 'Los tutores no pueden cancelar envíos de tareas.');
+      return;
+    }
+
     try {
       // 1. Primero eliminamos los archivos de Firebase Storage
       for (const file of submittedFiles) {
@@ -284,6 +335,20 @@ export default function TaskDetailScreen() {
 
           {/* Contenido scrolleable */}
           <View style={styles.contentContainer}>
+            {/* Mensaje de gestión cerrada */}
+            {isManagementClosed && (
+              <View style={[styles.closedManagementMessage, { backgroundColor: '#FFF3CD', borderColor: '#F0E68C' }]}>
+                <Ionicons
+                  name="lock-closed"
+                  size={20}
+                  color="#856404"
+                />
+                <ThemedText style={[styles.closedManagementText, { color: '#856404' }]}>
+                  Esta gestión está cerrada. Solo puedes ver la tarea, no subir archivos ni enviarla.
+                </ThemedText>
+              </View>
+            )}
+
       {/* Detalles de la tarea */}
       <View style={[styles.card, { backgroundColor: theme.card }]}>
         <View style={styles.cardSection}>
@@ -330,6 +395,20 @@ export default function TaskDetailScreen() {
           )}
         </View>
       </View>
+
+      {/* Sección de metodología de evaluación (si existe) */}
+      {assignment?.evaluation_methodology && (
+        <View style={[styles.card, { backgroundColor: theme.card }]}>
+          <ThemedText style={styles.sectionTitle}>Criterios de Evaluación</ThemedText>
+          <EvaluationToolViewer
+            methodology={{
+              type: assignment.evaluation_methodology.items ? 2 : 1, // 2 = Checklist, 1 = Rubric
+              methodology: assignment.evaluation_methodology
+            }}
+            isEditable={false} // Solo lectura para estudiantes
+          />
+        </View>
+      )}
 
       {/* Sección de entrega */}
       <View style={[styles.card, { backgroundColor: theme.card }]}>
@@ -404,11 +483,11 @@ export default function TaskDetailScreen() {
                       styles.cancelButton, 
                       { 
                         backgroundColor: theme.error,
-                        opacity: assignment.status === 2 ? 0.5 : 1 
+                        opacity: (assignment.status === 2 || isManagementClosed || isTutor) ? 0.4 : 1 
                       }
                     ]}
                     onPress={handleCancelSubmit}
-                    disabled={assignment.status === 2}
+                    disabled={assignment.status === 2 || isManagementClosed || isTutor}
                   >
                     <ThemedText style={styles.cancelButtonText}>
                       Cancelar Envío
@@ -418,15 +497,26 @@ export default function TaskDetailScreen() {
               ) : (
           <>
             <TouchableOpacity 
-              style={[styles.fileButton, { borderColor: theme.border }]}
+              style={[
+                styles.fileButton, 
+                { 
+                  borderColor: theme.border,
+                  opacity: (isManagementClosed || isTutor) ? 0.4 : 1,
+                  backgroundColor: (isManagementClosed || isTutor) ? theme.surface : 'transparent'
+                }
+              ]}
               onPress={handleSelectFile}
+              disabled={isManagementClosed || isTutor}
             >
               <Ionicons 
                 name="cloud-upload-outline" 
                 size={24} 
-                color={theme.primary} 
+                color={(isManagementClosed || isTutor) ? theme.subtext : theme.primary} 
               />
-              <ThemedText style={[styles.fileButtonText, { color: theme.primary }]}>
+              <ThemedText style={[
+                styles.fileButtonText, 
+                { color: (isManagementClosed || isTutor) ? theme.subtext : theme.primary }
+              ]}>
                       Seleccionar archivos
               </ThemedText>
             </TouchableOpacity>
@@ -458,12 +548,16 @@ export default function TaskDetailScreen() {
                           </View>
                           <TouchableOpacity 
                             onPress={() => handleRemoveFile(file.uri)}
-                            style={styles.removeButton}
+                            style={[
+                              styles.removeButton,
+                              { opacity: isTutor ? 0.4 : 1 }
+                            ]}
+                            disabled={isTutor}
                           >
                             <Ionicons 
                               name="close-circle" 
                               size={24} 
-                              color={theme.error} 
+                              color={isTutor ? theme.subtext : theme.error} 
                             />
                           </TouchableOpacity>
                         </View>
@@ -475,12 +569,12 @@ export default function TaskDetailScreen() {
                     style={[
                       styles.submitButton, 
                       { 
-                        backgroundColor: selectedFiles.length > 0 ? theme.primary : theme.border,
-                        opacity: isUploading ? 0.7 : selectedFiles.length > 0 ? 1 : 0.5 
+                        backgroundColor: (selectedFiles.length > 0 && !isManagementClosed && !isTutor) ? theme.primary : theme.subtext,
+                        opacity: (isUploading || isManagementClosed || isTutor) ? 0.4 : selectedFiles.length > 0 ? 1 : 0.5 
                       }
                     ]}
               onPress={handleSubmit}
-                    disabled={selectedFiles.length === 0 || isUploading}
+                    disabled={selectedFiles.length === 0 || isUploading || isManagementClosed || isTutor}
                   >
                     {isUploading ? (
                       <View style={styles.uploadingContainer}>
@@ -713,5 +807,19 @@ const styles = StyleSheet.create({
   commentText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  closedManagementMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  closedManagementText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
 }); 

@@ -47,13 +47,15 @@ export default function StudentHomeScreen() {
           if (activeManagement) {
             setSelectedManagement({
               id: activeManagement.id,
-              management: activeManagement.management
+              management: activeManagement.management,
+              status: activeManagement.status
             });
             setGlobalState(prev => ({
               ...prev,
               management: {
                 id: activeManagement.id,
-                management: activeManagement.management
+                management: activeManagement.management,
+                status: activeManagement.status
               }
             }));
           }
@@ -139,13 +141,15 @@ export default function StudentHomeScreen() {
     if (selectedMgmt && (selectedManagement?.id !== selectedMgmt.id)) {
       setSelectedManagement({
         id: selectedMgmt.id,
-        management: selectedMgmt.management
+        management: selectedMgmt.management,
+        status: selectedMgmt.status
       });
       setGlobalState(prev => ({
         ...prev,
         management: {
           id: selectedMgmt.id,
-          management: selectedMgmt.management
+          management: selectedMgmt.management,
+          status: selectedMgmt.status
         }
       }));
     }

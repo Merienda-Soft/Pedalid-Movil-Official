@@ -157,3 +157,27 @@ export const cancelSubmitTaskFiles = async (taskId, studentId, updatedBy) => {
   return await response.json();
 }
 
+// Obtener pesos por dimensión para control de ponderaciones
+export const getWeightsByDimension = async (professorId, courseId, subjectId, managementId, date) => {
+  try {
+    const currentDate = date || new Date().toISOString().split('T')[0];
+    const response = await fetch(
+      `${API_BASE_URL}/tasks/weight/professor/${professorId}/course/${courseId}/subject/${subjectId}/management/${managementId}?date=${currentDate}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Error al obtener los pesos por dimensión: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.ok) {
+      throw new Error(data.error || 'Error al obtener los pesos por dimensión');
+    }
+
+    return data.data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+

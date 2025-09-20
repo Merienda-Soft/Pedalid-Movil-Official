@@ -5,6 +5,7 @@ import { useThemeColor } from "../hooks/useThemeColor";
 
 export default function EvaluationToolSelector({
   selectedType,
+  selectedDimension,
   onChange,
   colors = {},
 }) {
@@ -22,53 +23,84 @@ export default function EvaluationToolSelector({
     clear: colorScheme === 'dark' ? '#FF6B6B' : '#FF5252',
   };
 
+  // Determinar si es autoevaluación
+  const isAutoEvaluation = selectedDimension === '5';
+
   return (
     <View style={styles.container}>
       <ThemedText style={styles.label}>Tipo de Evaluación</ThemedText>
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            {
-              backgroundColor: selectedType === EvaluationToolType.RUBRIC ? theme.primary : theme.button,
-              borderColor: selectedType === EvaluationToolType.RUBRIC ? theme.primary : theme.buttonBorder,
-            }
-          ]}
-          onPress={() => onChange(EvaluationToolType.RUBRIC)}
-        >
-          <ThemedText
+        {/* Para autoevaluación, solo mostrar opción de autoevaluación */}
+        {isAutoEvaluation ? (
+          <TouchableOpacity
             style={[
-              styles.buttonText,
+              styles.button,
               {
-                color: selectedType === EvaluationToolType.RUBRIC ? '#FFFFFF' : theme.buttonText,
+                backgroundColor: selectedType === EvaluationToolType.AUTO_EVALUATION ? theme.primary : theme.button,
+                borderColor: selectedType === EvaluationToolType.AUTO_EVALUATION ? theme.primary : theme.buttonBorder,
               }
             ]}
+            onPress={() => onChange(EvaluationToolType.AUTO_EVALUATION)}
           >
-            Rúbrica
-          </ThemedText>
-        </TouchableOpacity>
+            <ThemedText
+              style={[
+                styles.buttonText,
+                {
+                  color: selectedType === EvaluationToolType.AUTO_EVALUATION ? '#FFFFFF' : theme.buttonText,
+                }
+              ]}
+            >
+              Autoevaluación
+            </ThemedText>
+          </TouchableOpacity>
+        ) : (
+          // Para otras dimensiones, mostrar rúbrica y lista de cotejo
+          <>
+            <TouchableOpacity
+              style={[
+                styles.button,
+                {
+                  backgroundColor: selectedType === EvaluationToolType.RUBRIC ? theme.primary : theme.button,
+                  borderColor: selectedType === EvaluationToolType.RUBRIC ? theme.primary : theme.buttonBorder,
+                }
+              ]}
+              onPress={() => onChange(EvaluationToolType.RUBRIC)}
+            >
+              <ThemedText
+                style={[
+                  styles.buttonText,
+                  {
+                    color: selectedType === EvaluationToolType.RUBRIC ? '#FFFFFF' : theme.buttonText,
+                  }
+                ]}
+              >
+                Rúbrica
+              </ThemedText>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            {
-              backgroundColor: selectedType === EvaluationToolType.CHECKLIST ? theme.primary : theme.button,
-              borderColor: selectedType === EvaluationToolType.CHECKLIST ? theme.primary : theme.buttonBorder,
-            }
-          ]}
-          onPress={() => onChange(EvaluationToolType.CHECKLIST)}
-        >
-          <ThemedText
-            style={[
-              styles.buttonText,
-              {
-                color: selectedType === EvaluationToolType.CHECKLIST ? '#FFFFFF' : theme.buttonText,
-              }
-            ]}
-          >
-            Lista de Cotejo
-          </ThemedText>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.button,
+                {
+                  backgroundColor: selectedType === EvaluationToolType.CHECKLIST ? theme.primary : theme.button,
+                  borderColor: selectedType === EvaluationToolType.CHECKLIST ? theme.primary : theme.buttonBorder,
+                }
+              ]}
+              onPress={() => onChange(EvaluationToolType.CHECKLIST)}
+            >
+              <ThemedText
+                style={[
+                  styles.buttonText,
+                  {
+                    color: selectedType === EvaluationToolType.CHECKLIST ? '#FFFFFF' : theme.buttonText,
+                  }
+                ]}
+              >
+                Lista de Cotejo
+              </ThemedText>
+            </TouchableOpacity>
+          </>
+        )}
 
         {selectedType && (
           <TouchableOpacity

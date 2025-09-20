@@ -10,6 +10,8 @@ import { useAuth } from '../../services/AuthProvider';
 import { handleError } from '../../utils/errorHandler';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 import EvaluationToolViewer from '../../components/EvaluationToolViewer';
+import AutoEvaluationViewer from '../../components/AutoEvaluationViewer';
+import { EvaluationToolType, calculateAutoEvaluationScore } from '../../types/evaluation';
 import * as DocumentPicker from 'expo-document-picker';
 import { storage } from '../../config/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -26,6 +28,12 @@ export default function TaskDetailScreen() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [submittedFiles, setSubmittedFiles] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Estados para autoevaluación
+  const [autoEvaluationData, setAutoEvaluationData] = useState(null);
+  const [autoEvaluationScore, setAutoEvaluationScore] = useState(0);
+  const [isAutoEvaluationComplete, setIsAutoEvaluationComplete] = useState(false);
+  const [evaluationMethodology, setEvaluationMethodology] = useState(null);
   
   const { studentId, taskId } = route.params;
   
@@ -51,6 +59,29 @@ export default function TaskDetailScreen() {
   useEffect(() => {
     fetchTaskDetails();
   }, []);
+
+  // Configurar datos de autoevaluación cuando cambie la tarea
+  useEffect(() => {
+    const assignment = task?.assignments?.[0];
+    const isAutoEvaluation = assignment?.type === EvaluationToolType.AUTO_EVALUATION;
+    
+    if (isAutoEvaluation && assignment?.evaluation_methodology) {
+      setAutoEvaluationData(assignment.evaluation_methodology);
+      setEvaluationMethodology({
+        type: assignment.type,
+        methodology: assignment.evaluation_methodology
+      });
+      const score = calculateAutoEvaluationScore(assignment.evaluation_methodology);
+      setAutoEvaluationScore(score);
+      
+      const isComplete = assignment.evaluation_methodology.dimensions.every(dimension =>
+        dimension.criteria.every(criterion =>
+          criterion.levels.some(level => level.selected)
+        )
+      );
+      setIsAutoEvaluationComplete(isComplete);
+    }
+  }, [task]);
 
   const fetchTaskDetails = async () => {
     try {
@@ -166,6 +197,15 @@ export default function TaskDetailScreen() {
       return;
     }
 
+    // Detectar si es autoevaluación y usar el handler apropiado
+    const assignment = task?.assignments?.[0];
+    const isAutoEvaluation = assignment?.type === EvaluationToolType.AUTO_EVALUATION;
+    
+    if (isAutoEvaluation) {
+      await handleSaveAutoEvaluation();
+      return;
+    }
+
     try {
       setIsUploading(true);
       setUploadProgress(0);
@@ -262,6 +302,51 @@ export default function TaskDetailScreen() {
     }
   };
 
+  // Handlers para autoevaluación
+  const handleAutoEvaluationChange = (updatedMethodology, score) => {
+    setAutoEvaluationData(updatedMethodology);
+    setAutoEvaluationScore(score);
+    setEvaluationMethodology({
+      type: EvaluationToolType.AUTO_EVALUATION,
+      methodology: updatedMethodology
+    });
+  };
+
+  const handleAutoEvaluationCompletion = (isComplete) => {
+    setIsAutoEvaluationComplete(isComplete);
+  };
+
+  const handleSaveAutoEvaluation = async () => {
+    if (!autoEvaluationData || !isAutoEvaluationComplete) {
+      Alert.alert('Error', 'Por favor completa todos los criterios de autoevaluación antes de enviar.');
+      return;
+    }
+
+    // Verificar si la gestión está cerrada
+    if (isManagementClosed) {
+      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden realizar entregas.');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      
+      // En lugar de archivos, enviamos la metodología de evaluación
+      const response = await submitTaskFiles(taskId, studentId, [], autoEvaluationData);
+      
+      if (response.ok) {
+        Alert.alert('Éxito', 'Autoevaluación enviada correctamente');
+        await fetchTaskDetails(); // Refrescar los datos
+      } else {
+        throw new Error('Error al enviar la autoevaluación');
+      }
+    } catch (error) {
+      handleError(error, 'Error al enviar la autoevaluación');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Función para manejar el refresh
   const onRefresh = async () => {
     setRefreshing(true);
@@ -282,6 +367,7 @@ export default function TaskDetailScreen() {
   const comment = assignment?.comment || '';
   const isSubmitted = assignment?.status === 1 || assignment?.status === 2;
   const isLate = new Date(task?.end_date) < new Date();
+  const isAutoEvaluation = assignment?.type === EvaluationToolType.AUTO_EVALUATION;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.surface }]}>
@@ -496,99 +582,143 @@ export default function TaskDetailScreen() {
                 </View>
               ) : (
           <>
-            <TouchableOpacity 
-              style={[
-                styles.fileButton, 
-                { 
-                  borderColor: theme.border,
-                  opacity: (isManagementClosed || isTutor) ? 0.4 : 1,
-                  backgroundColor: (isManagementClosed || isTutor) ? theme.surface : 'transparent'
-                }
-              ]}
-              onPress={handleSelectFile}
-              disabled={isManagementClosed || isTutor}
-            >
-              <Ionicons 
-                name="cloud-upload-outline" 
-                size={24} 
-                color={(isManagementClosed || isTutor) ? theme.subtext : theme.primary} 
-              />
-              <ThemedText style={[
-                styles.fileButtonText, 
-                { color: (isManagementClosed || isTutor) ? theme.subtext : theme.primary }
-              ]}>
-                      Seleccionar archivos
-              </ThemedText>
-            </TouchableOpacity>
+            {isAutoEvaluation ? (
+              <>
+                {/* Sección de Autoevaluación */}
+                {autoEvaluationData && evaluationMethodology && (
+                  <AutoEvaluationViewer 
+                    methodology={autoEvaluationData}
+                    onEvaluationChange={handleAutoEvaluationChange}
+                    onScoreChange={(score) => setAutoEvaluationScore(score)}
+                    onCompletionChange={handleAutoEvaluationCompletion}
+                    disabled={assignment?.status === 2 || isManagementClosed || isTutor}
+                  />
+                )}
 
-                  {selectedFiles.length > 0 && (
-                    <View style={styles.filesList}>
-                      {selectedFiles.map((file, index) => (
-                        <View 
-                          key={file.uri} 
-                          style={[styles.fileItem, { backgroundColor: theme.surface }]}
-                        >
-                          <View style={styles.fileInfo}>
-                            <Ionicons 
-                              name={getFileIcon(file.mimeType)}
-                              size={24} 
-                              color={theme.primary} 
-                            />
-                            <View style={styles.fileDetails}>
-                              <ThemedText 
-                                style={[styles.fileName, { color: theme.text }]} 
-                                numberOfLines={1}
-                              >
-                                {file.name}
-                              </ThemedText>
-                              <ThemedText style={[styles.fileSize, { color: theme.subtext }]}>
-                                {formatFileSize(file.size)}
-                              </ThemedText>
-                            </View>
-                          </View>
-                          <TouchableOpacity 
-                            onPress={() => handleRemoveFile(file.uri)}
-                            style={[
-                              styles.removeButton,
-                              { opacity: isTutor ? 0.4 : 1 }
-                            ]}
-                            disabled={isTutor}
-                          >
-                            <Ionicons 
-                              name="close-circle" 
-                              size={24} 
-                              color={isTutor ? theme.subtext : theme.error} 
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
+                {/* Botón de envío para autoevaluación */}
+                <TouchableOpacity 
+                  style={[
+                    styles.submitButton, 
+                    { 
+                      backgroundColor: (isAutoEvaluationComplete && !isManagementClosed && !isTutor) ? theme.primary : theme.subtext,
+                      opacity: (isUploading || isManagementClosed || isTutor || assignment?.status === 2) ? 0.4 : isAutoEvaluationComplete ? 1 : 0.5 
+                    }
+                  ]}
+                  onPress={handleSaveAutoEvaluation}
+                  disabled={!isAutoEvaluationComplete || isUploading || isManagementClosed || isTutor || assignment?.status === 2}
+                >
+                  {isUploading ? (
+                    <View style={styles.uploadingContainer}>
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                      <ThemedText style={styles.submitButtonText}>
+                        Enviando...
+                      </ThemedText>
                     </View>
+                  ) : (
+                    <ThemedText style={styles.submitButtonText}>
+                      Enviar autoevaluación
+                    </ThemedText>
                   )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Sección de archivos tradicional */}
+                <TouchableOpacity 
+                  style={[
+                    styles.fileButton, 
+                    { 
+                      borderColor: theme.border,
+                      opacity: (isManagementClosed || isTutor) ? 0.4 : 1,
+                      backgroundColor: (isManagementClosed || isTutor) ? theme.surface : 'transparent'
+                    }
+                  ]}
+                  onPress={handleSelectFile}
+                  disabled={isManagementClosed || isTutor}
+                >
+                  <Ionicons 
+                    name="cloud-upload-outline" 
+                    size={24} 
+                    color={(isManagementClosed || isTutor) ? theme.subtext : theme.primary} 
+                  />
+                  <ThemedText style={[
+                    styles.fileButtonText, 
+                    { color: (isManagementClosed || isTutor) ? theme.subtext : theme.primary }
+                  ]}>
+                    Seleccionar archivos
+                  </ThemedText>
+                </TouchableOpacity>
 
-            <TouchableOpacity 
-                    style={[
-                      styles.submitButton, 
-                      { 
-                        backgroundColor: (selectedFiles.length > 0 && !isManagementClosed && !isTutor) ? theme.primary : theme.subtext,
-                        opacity: (isUploading || isManagementClosed || isTutor) ? 0.4 : selectedFiles.length > 0 ? 1 : 0.5 
-                      }
-                    ]}
-              onPress={handleSubmit}
-                    disabled={selectedFiles.length === 0 || isUploading || isManagementClosed || isTutor}
-                  >
-                    {isUploading ? (
-                      <View style={styles.uploadingContainer}>
-                        <ActivityIndicator color="#FFFFFF" size="small" />
-                        <ThemedText style={styles.submitButtonText}>
-                          Subiendo... {Math.round(uploadProgress)}%
-                        </ThemedText>
+                {selectedFiles.length > 0 && (
+                  <View style={styles.filesList}>
+                    {selectedFiles.map((file, index) => (
+                      <View 
+                        key={file.uri} 
+                        style={[styles.fileItem, { backgroundColor: theme.surface }]}
+                      >
+                        <View style={styles.fileInfo}>
+                          <Ionicons 
+                            name={getFileIcon(file.mimeType)}
+                            size={24} 
+                            color={theme.primary} 
+                          />
+                          <View style={styles.fileDetails}>
+                            <ThemedText 
+                              style={[styles.fileName, { color: theme.text }]} 
+                              numberOfLines={1}
+                            >
+                              {file.name}
+                            </ThemedText>
+                            <ThemedText style={[styles.fileSize, { color: theme.subtext }]}>
+                              {formatFileSize(file.size)}
+                            </ThemedText>
+                          </View>
+                        </View>
+                        <TouchableOpacity 
+                          onPress={() => handleRemoveFile(file.uri)}
+                          style={[
+                            styles.removeButton,
+                            { opacity: isTutor ? 0.4 : 1 }
+                          ]}
+                          disabled={isTutor}
+                        >
+                          <Ionicons 
+                            name="close-circle" 
+                            size={24} 
+                            color={isTutor ? theme.subtext : theme.error} 
+                          />
+                        </TouchableOpacity>
                       </View>
-                    ) : (
-              <ThemedText style={styles.submitButtonText}>
-                Enviar tarea
-              </ThemedText>
-                    )}
-            </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                <TouchableOpacity 
+                  style={[
+                    styles.submitButton, 
+                    { 
+                      backgroundColor: (selectedFiles.length > 0 && !isManagementClosed && !isTutor) ? theme.primary : theme.subtext,
+                      opacity: (isUploading || isManagementClosed || isTutor) ? 0.4 : selectedFiles.length > 0 ? 1 : 0.5 
+                    }
+                  ]}
+                  onPress={handleSubmit}
+                  disabled={selectedFiles.length === 0 || isUploading || isManagementClosed || isTutor}
+                >
+                  {isUploading ? (
+                    <View style={styles.uploadingContainer}>
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                      <ThemedText style={styles.submitButtonText}>
+                        Subiendo... {Math.round(uploadProgress)}%
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <ThemedText style={styles.submitButtonText}>
+                      Enviar tarea
+                    </ThemedText>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </>
               )}
             </View>

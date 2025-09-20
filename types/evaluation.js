@@ -107,11 +107,12 @@ export const calculateAutoEvaluationScore = (data) => {
     if (!dimension.criteria.length) continue;
     
     const dimensionWeight = 50; // Cada dimensión vale 50%
-    const criterionWeight = dimensionWeight / dimension.criteria.length;
+    const criterionWeight = dimensionWeight / dimension.criteria.length; // Dividir entre criterios
     
     for (const criterion of dimension.criteria) {
       const selectedLevel = criterion.levels.find(level => level.selected);
       if (selectedLevel) {
+        // El valor del nivel se multiplica por el peso del criterio
         const maxValue = Math.max(...criterion.levels.map(l => l.value));
         const levelScore = (selectedLevel.value / maxValue) * criterionWeight;
         total += levelScore;

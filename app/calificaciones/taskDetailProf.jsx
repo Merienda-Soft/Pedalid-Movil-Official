@@ -64,28 +64,20 @@ export default function TaskDetailProf() {
   const fetchTaskDetails = async () => {
     try {
       const response = await getTaskByIdwithassignments(taskId, studentId);
+
       if (response.ok && response.data) {
         setTask(response.data);
         const assignment = response.data.assignments?.[0];
         if (assignment) {
-          setQualification(assignment.qualification || "");
-          setComment(assignment.comment || "");
-          if (assignment.files) {
-            setSubmittedFiles(assignment.files);
-          }
-          // Cargar metodología de evaluación si existe
-          if (assignment.evaluation_methodology) {
-            setEvaluationMethodology({
-              type: assignment.type,
-              methodology: assignment.evaluation_methodology,
-            });
-          }
+          setSubmittedFiles(assignment.files);
+          setEvaluationMethodology(assignment.evaluation_methodology);
+          setQualification(assignment.qualification || '');
         }
       } else {
-        handleError(new Error("No se pudo cargar la tarea"));
+        handleError(new Error('No se pudo cargar la tarea'));
       }
     } catch (error) {
-      handleError(error, "Error al cargar los detalles de la tarea");
+      handleError(error, 'Error al cargar los detalles de la tarea');
     } finally {
       setLoading(false);
     }
@@ -116,60 +108,17 @@ export default function TaskDetailProf() {
   }, []);
 
   const handleSaveQualification = async () => {
-    // Prevenir guardado en gestiones cerradas
-    if (isManagementClosed) {
-      Alert.alert('Información', 'Esta gestión está cerrada. No se pueden modificar las calificaciones.');
+    if (!evaluationMethodology) {
+      Alert.alert('Error', 'No hay criterios de evaluación para guardar.');
       return;
     }
-    
-    // Si está evaluada (status 2), mostrar confirmación primero
-    if (assignment?.status === 2) {
-      Alert.alert(
-        "Reevaluar Tarea",
-        "¿Desea reevaluar la nota de esta tarea?",
-        [
-          {
-            text: "No",
-            style: "cancel",
-          },
-          {
-            text: "Sí",
-            onPress: async () => {
-              await saveQualification();
-            },
-          },
-        ]
-      );
-    } else {
-      // Si no está evaluada, guardar directamente
-      await saveQualification();
-    }
-  };
 
-  const saveQualification = async () => {
     try {
       setSaving(true);
-
-      const studentsData = [
-        {
-          student_id: studentId,
-          qualification: qualification,
-          comment: comment,
-          evaluation_methodology: evaluationMethodology?.methodology,
-        },
-      ];
-
-      const response = await updateActivity(taskId, studentsData, teacherid);
-
-      if (response.ok) {
-        Alert.alert("Éxito", "Calificación guardada correctamente");
-        // Refrescar los datos para reflejar el cambio de estado
-        await fetchTaskDetails();
-      } else {
-        throw new Error("Error al guardar la calificación");
-      }
+      await saveQualification(taskId, studentId, evaluationMethodology);
+      Alert.alert('Calificación guardada', 'La calificación ha sido guardada correctamente.');
     } catch (error) {
-      handleError(error, "Error al guardar la calificación");
+      handleError(error, 'Error al guardar la calificación');
     } finally {
       setSaving(false);
     }

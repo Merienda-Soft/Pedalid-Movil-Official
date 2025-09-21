@@ -62,24 +62,49 @@ export default function TaskDetailScreen() {
 
   // Configurar datos de autoevaluación cuando cambie la tarea
   useEffect(() => {
-    const assignment = task?.assignments?.[0];
+    if (!task) return; // Evitar ejecutar si la tarea no está definida
+
+    const assignment = task.assignments?.[0];
     const isAutoEvaluation = assignment?.type === EvaluationToolType.AUTO_EVALUATION;
-    
+
     if (isAutoEvaluation && assignment?.evaluation_methodology) {
-      setAutoEvaluationData(assignment.evaluation_methodology);
-      setEvaluationMethodology({
-        type: assignment.type,
-        methodology: assignment.evaluation_methodology
+      setAutoEvaluationData((prevData) => {
+        if (JSON.stringify(prevData) === JSON.stringify(assignment.evaluation_methodology)) {
+          return prevData; // Evitar actualizaciones innecesarias
+        }
+        return assignment.evaluation_methodology;
       });
+
+      setEvaluationMethodology((prevMethodology) => {
+        const newMethodology = {
+          type: assignment.type,
+          methodology: assignment.evaluation_methodology,
+        };
+        if (JSON.stringify(prevMethodology) === JSON.stringify(newMethodology)) {
+          return prevMethodology; // Evitar actualizaciones innecesarias
+        }
+        return newMethodology;
+      });
+
       const score = calculateAutoEvaluationScore(assignment.evaluation_methodology);
-      setAutoEvaluationScore(score);
-      
-      const isComplete = assignment.evaluation_methodology.dimensions.every(dimension =>
-        dimension.criteria.every(criterion =>
-          criterion.levels.some(level => level.selected)
+      setAutoEvaluationScore((prevScore) => {
+        if (prevScore === score) {
+          return prevScore; // Evitar actualizaciones innecesarias
+        }
+        return score;
+      });
+
+      const isComplete = assignment.evaluation_methodology.dimensions.every((dimension) =>
+        dimension.criteria.every((criterion) =>
+          criterion.levels.some((level) => level.selected)
         )
       );
-      setIsAutoEvaluationComplete(isComplete);
+      setIsAutoEvaluationComplete((prevComplete) => {
+        if (prevComplete === isComplete) {
+          return prevComplete; // Evitar actualizaciones innecesarias
+        }
+        return isComplete;
+      });
     }
   }, [task]);
 
@@ -185,24 +210,26 @@ export default function TaskDetailScreen() {
   };
 
   const handleSubmit = async () => {
-    // Verificar si la gestión está cerrada
     if (isManagementClosed) {
       Alert.alert('Información', 'Esta gestión está cerrada. No se pueden enviar tareas.');
       return;
     }
 
-    // Verificar si el usuario es tutor
     if (isTutor) {
       Alert.alert('Información', 'Los tutores no pueden enviar tareas.');
       return;
     }
 
-    // Detectar si es autoevaluación y usar el handler apropiado
     const assignment = task?.assignments?.[0];
     const isAutoEvaluation = assignment?.type === EvaluationToolType.AUTO_EVALUATION;
-    
+
     if (isAutoEvaluation) {
       await handleSaveAutoEvaluation();
+      setEvaluationMethodology((prev) => ({
+        ...prev,
+        locked: true, // Bloquear criterios después de enviar
+      }));
+      Alert.alert('Autoevaluación enviada', `Tu nota: ${autoEvaluationScore}`);
       return;
     }
 
@@ -210,7 +237,6 @@ export default function TaskDetailScreen() {
       setIsUploading(true);
       setUploadProgress(0);
 
-      // 1. Subir archivos a Firebase
       const totalFiles = selectedFiles.length;
       const uploadedFiles = [];
 
@@ -218,25 +244,12 @@ export default function TaskDetailScreen() {
         const file = selectedFiles[i];
         const uploadedFile = await uploadFileToFirebase(file);
         uploadedFiles.push(uploadedFile);
-        
-        // Actualizar progreso
         setUploadProgress(((i + 1) / totalFiles) * 100);
       }
 
-      // 2. Enviar información a tu API
-      const response = await submitTaskFiles(taskId, studentId, uploadedFiles, globalState.studentid || globalState.teacherid);
-      
-      if (response.ok) {
-        // 3. Actualizar el estado de la tarea
-        await fetchTaskDetails();
-        
-        // 4. Limpiar el estado
-        setSelectedFiles([]);
-        setUploadProgress(0);
-      } else {
-        throw new Error('Error al enviar la tarea');
-      }
-
+      await submitTaskFiles(taskId, studentId, uploadedFiles);
+      setSubmittedFiles(uploadedFiles);
+      Alert.alert('Tarea enviada', 'Tu tarea ha sido enviada correctamente.');
     } catch (error) {
       handleError(error, 'Error al enviar la tarea');
     } finally {
@@ -952,4 +965,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
   },
-}); 
+});

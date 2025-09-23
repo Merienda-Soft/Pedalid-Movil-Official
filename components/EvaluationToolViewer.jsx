@@ -238,14 +238,14 @@ export default function EvaluationToolViewer({
                       </View>
                     </View>
 
-                    {isSelected && (
+                    {/* {isSelected && (
                       <Ionicons
                         name="checkmark-circle"
                         size={20}
                         color="#FFFFFF"
                         style={styles.selectedIcon}
                       />
-                    )}
+                    )} */}
                   </TouchableOpacity>
                 );
               })}

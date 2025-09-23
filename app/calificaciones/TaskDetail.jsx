@@ -686,7 +686,7 @@ export default function TaskDetailScreen() {
                       styles.cancelButton, 
                       { 
                         backgroundColor: theme.error,
-                        opacity: (assignment.status === 2 || isManagementClosed || isTutor) ? 0.4 : 1 
+                        opacity: (assignment.status === 2 || isManagementClosed || isTutor) ? 0 : 1 
                       }
                     ]}
                     onPress={handleCancelSubmit}

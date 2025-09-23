@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import EvaluationToolViewer from "../../components/EvaluationToolViewer";
+import AutoEvaluationViewer from "../../components/AutoEvaluationViewer";
 import ParallaxScrollView from "../../components/ParallaxScrollView";
 import { ThemedText } from "../../components/ThemedText";
 import { ThemedView } from "../../components/ThemedView";
@@ -66,7 +67,8 @@ export default function TaskDetailProf() {
   const fetchTaskDetails = async () => {
     try {
       const response = await getTaskByIdwithassignments(taskId, studentId);
-
+      console.log("tarea detalle", response.data);
+      console.log("metodologia", JSON.stringify(response.data.assignments[0].evaluation_methodology));
       if (response.ok && response.data) {
         setTask(response.data);
         const assignment = response.data.assignments?.[0];
@@ -359,15 +361,30 @@ export default function TaskDetailProf() {
                                      evaluationType === EvaluationToolType.AUTO_EVALUATION ? 'Autoevaluación' :
                                      'Desconocido'})
                 </ThemedText>
-                <EvaluationToolViewer
-                  methodology={{
-                    type: evaluationType,
-                    methodology: evaluationMethodology
-                  }}
-                  onScoreChange={handleScoreChange}
-                  onEvaluationChange={handleEvaluationChange}
-                  isEditable={assignment?.status !== 2 && !isManagementClosed}
-                />
+                {evaluationType === EvaluationToolType.AUTO_EVALUATION ? (
+                  <AutoEvaluationViewer
+                    methodology={evaluationMethodology}
+                    onEvaluationChange={(updatedMethodology) => {
+                      // Solo actualizar si hay cambios reales para evitar loops
+                      if (JSON.stringify(updatedMethodology) !== JSON.stringify(evaluationMethodology)) {
+                        console.log('AutoEvaluation change:', updatedMethodology);
+                        setEvaluationMethodology(updatedMethodology);
+                      }
+                    }}
+                    onScoreChange={handleScoreChange}
+                    disabled={assignment?.status === 2 || isManagementClosed}
+                  />
+                ) : (
+                  <EvaluationToolViewer
+                    methodology={{
+                      type: evaluationType,
+                      methodology: evaluationMethodology
+                    }}
+                    onScoreChange={handleScoreChange}
+                    onEvaluationChange={handleEvaluationChange}
+                    isEditable={assignment?.status !== 2 && !isManagementClosed}
+                  />
+                )}
               </View>
             )}
 

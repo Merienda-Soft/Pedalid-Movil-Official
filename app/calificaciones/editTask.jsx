@@ -326,7 +326,8 @@ export default function EditTaskScreen() {
       { value: '1', text: 'Ser' },
       { value: '2', text: 'Saber' },
       { value: '3', text: 'Hacer' },
-      { value: '4', text: 'Decidir' },
+      { value: '4', text: 'Decidir' }, 
+      { value: '5', text: 'Autoevaluacion' }, 
     ];
 
     // Funciones para manejar la evaluación

@@ -50,7 +50,7 @@ export default function StudentTasksScreen() {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   // Parámetros de ruta
-  const { studentId, courseId, subjectId, managementId, materiaName } =
+  const { studentId, courseId, subjectId, managementId, materiaName, managementYear } =
     route.params;
 
   const [currentDate, setCurrentDate] = useState(() => {
@@ -100,8 +100,8 @@ export default function StudentTasksScreen() {
         
         // Si hay tareas, establecer la fecha actual basada en la primera tarea
         if (transformedTasks.length > 0) {
-          const firstTaskDate = transformedTasks[0].createDate;
-          setCurrentDate(new Date(firstTaskDate.getFullYear(), firstTaskDate.getMonth(), 1));
+          const firstTaskDate = new Date(transformedTasks[0].end_date);
+          setCurrentDate(new Date(managementYear, firstTaskDate.getMonth(), 1));
         }
         
         setTasks(transformedTasks);
@@ -122,7 +122,7 @@ export default function StudentTasksScreen() {
       
       fetchTasks();
     }
-  }, [studentId, courseId, subjectId, managementId]);
+  }, [studentId, courseId, subjectId, managementId, managementYear]);
 
   useFocusEffect(
     useCallback(() => {
@@ -137,8 +137,13 @@ export default function StudentTasksScreen() {
   const handlePrevMonth = useCallback(() => {
     setCurrentDate((prev) => {
       const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() - 1);
-      
+      if (newDate.getMonth() === 0) {
+        // Si estamos en enero, ir a diciembre del mismo año de gestión
+        newDate.setMonth(11);
+      } else {
+        newDate.setMonth(prev.getMonth() - 1);
+      }
+
       return newDate;
     });
   }, []);
@@ -146,8 +151,13 @@ export default function StudentTasksScreen() {
   const handleNextMonth = useCallback(() => {
     setCurrentDate((prev) => {
       const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + 1);
-      
+      if (newDate.getMonth() === 11) {
+        // Si estamos en diciembre, ir a enero del mismo año de gestión
+        newDate.setMonth(0);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
+
       return newDate;
     });
   }, []);
@@ -163,26 +173,26 @@ export default function StudentTasksScreen() {
 
   // Filtrado de tareas
   const filteredTasks = useMemo(() => {
-    
+
     return tasks.filter((task) => {
-      const taskCreateDate = task.createDate;
-      
-      
+      const taskEndDate = new Date(task.end_date);
+
+
       const matchesSearch = task.name
         .toLowerCase()
         .includes(searchValue.toLowerCase());
-      
+
       const matchesMonth =
-        taskCreateDate.getMonth() === currentDate.getMonth() &&
-        taskCreateDate.getFullYear() === currentDate.getFullYear();
-      
+        taskEndDate.getMonth() === currentDate.getMonth() &&
+        taskEndDate.getFullYear() === currentDate.getFullYear();
+
       const matchesStatus =
         statusFilter === "ALL" ||
         (statusFilter === "PENDING" && task.status === 0) ||
         (statusFilter === "SUBMITTED" && task.status === 1) ||
         (statusFilter === "RETURNED" && task.status === 2);
-      
-      
+
+
       const passesFilter = matchesSearch && matchesMonth && matchesStatus;
 
       return passesFilter;

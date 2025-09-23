@@ -382,6 +382,8 @@ export default function StudentTasksScreen() {
                               />
                               <ThemedText
                                 style={[styles.taskName, { color: theme.text }]}
+                                numberOfLines={3}
+                                ellipsizeMode="tail"
                               >
                                 {task.name}
                               </ThemedText>
@@ -600,7 +602,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   taskCard: {
-    borderRadius: 12,
+    borderRadius: 10,
     marginHorizontal: 16,
     marginBottom: 8,
     overflow: "hidden",
@@ -618,10 +620,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    gap: 12,
   },
   taskTitleContainer: {
     flex: 1,
-    gap: 4,
+    gap: 5,
+    minWidth: 0,
+    maxWidth: '85%', // Limita el ancho máximo del contenedor del título
   },
   taskName: {
     fontSize: 16,
@@ -633,6 +638,7 @@ const styles = StyleSheet.create({
   statusContainer: {
     alignItems: "flex-end",
     gap: 4,
+    flexShrink: 0, // Evita que se contraiga
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -656,12 +662,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   detailText: {
-    fontSize: 12,
+    fontSize: 10,
   },
   statusIndicatorContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    flex: 1,
+    maxWidth: '85%', // Limita el ancho máximo para dejar espacio al status
   },
   statusIndicator: {
     width: 8,
@@ -670,6 +678,8 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   datesContainer: {
+    display: "flex",
+    flexDirection: "row",
     marginTop: 4,
     gap: 4,
   },

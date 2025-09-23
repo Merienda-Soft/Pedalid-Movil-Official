@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { View, Pressable, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, useColorScheme } from 'react-native';
+import { View, Pressable, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, useColorScheme, Image, TextInput } from 'react-native';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { InputField } from '../../components/InputField';
@@ -21,13 +21,13 @@ export default function AuthLogin() {
 
   // Colores dinámicos basados en el tema
   const colors = useMemo(() => ({
-    background: colorScheme === 'dark' ? '#1D3D47' : '#f5f5f5',
-    cardBackground: colorScheme === 'dark' ? '#2A4A54' : '#ffffff',
+    background: colorScheme === 'dark' ? '#000000ff' : '#000000ff',
+    cardBackground: colorScheme === 'dark' ? '#fff' : '#ffffff',
     text: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
     secondaryText: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
-    primary: colorScheme === 'dark' ? '#4DA6FF' : '#17A2B8',
+    primary: colorScheme === 'dark' ? '#313145' : '#313145',
     border: colorScheme === 'dark' ? '#3A5A64' : '#E0E0E0',
-    shadow: colorScheme === 'dark' ? '#000000' : '#000000',
+    shadow: colorScheme === 'dark' ? '#000000' : '#000000ff',
     error: '#FF6B6B',
     icon: colorScheme === 'dark' ? '#B0B0B0' : '#666666',
   }), [colorScheme]);
@@ -100,49 +100,62 @@ export default function AuthLogin() {
             shadowColor: colors.shadow,
           }
         ]}>
+          <Image
+            source={require('../../assets/images/pet.png')}
+            style={styles.logo}
+          />
           <ThemedText 
-            type="title" 
-            style={[styles.title, { color: colors.primary }]}
+            type="subtitle" 
+            style={[styles.title, { color: colors.shadow }]}
           >
-            Bienvenido
+            Te damos la bienvenida
           </ThemedText>
           <ThemedText 
-            style={[styles.subtitle, { color: colors.secondaryText }]}
+            style={[styles.subtitle, { color: colors.shadow }]}
           >
-            Inicia sesión para continuar
+            Inicia sesión en EduFlujo
           </ThemedText>
           
           <View style={styles.inputContainer}>
-            <InputField 
-              label='Email' 
-              value={email} 
-              onChangeText={setEmail} 
-              placeholder='Ej: ejemplo@gmail.com'
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholderTextColor={colors.secondaryText}
-              style={{ color: colors.text }}
-            />
-            <View style={styles.passwordContainer}>
-              <InputField 
-                label='Contraseña' 
-                value={password} 
-                onChangeText={setPassword} 
-                placeholder='••••••••' 
-                secureTextEntry={!showPassword}
-                placeholderTextColor={colors.secondaryText}
-                style={{ color: colors.text }}
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.inputLabel}>
+                Email
+              </ThemedText>
+              <TextInput
+                style={[styles.input, { color: "#000" }]}
+                value={email}
+                onChangeText={setEmail}
+                placeholder='Ej: ejemplo@gmail.com'
+                placeholderTextColor="black"
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
-              <Pressable 
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons 
-                  name={showPassword ? "eye-off" : "eye"} 
-                  size={24} 
-                  color={colors.icon}
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.inputLabel}>
+                Contraseña
+              </ThemedText>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={[styles.input, { color: "#000" }]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder='••••••••'
+                  placeholderTextColor="black"
+                  secureTextEntry={!showPassword}
                 />
-              </Pressable>
+                <Pressable
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={24}
+                    color={colors.icon}
+                  />
+                </Pressable>
+              </View>
             </View>
           </View>
 
@@ -172,6 +185,13 @@ export default function AuthLogin() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    alignContent: 'center',
+    alignSelf: 'center'
   },
   mainContainer: {
     flex: 1,
@@ -206,7 +226,26 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 24,
-    gap: 16,
+    gap: 20,
+  },
+  inputGroup: {
+    gap: 8,
+    marginBottom: 4,
+  },
+  inputLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 4,
+  },
+  input: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   passwordContainer: {
     position: 'relative',
@@ -214,7 +253,7 @@ const styles = StyleSheet.create({
   eyeIcon: {
     position: 'absolute',
     right: 12,
-    top: 41,
+    top: 7,
     padding: 4,
   },
   loginButton: {

@@ -23,6 +23,7 @@ import {
 } from "../../services/activity";
 import { useGlobalState } from "../../services/UserContext";
 import { handleError } from "../../utils/errorHandler";
+import { EvaluationToolType } from "../../types/evaluation";
 
 export default function TaskDetailProf() {
   const colorScheme = useColorScheme();
@@ -40,6 +41,7 @@ export default function TaskDetailProf() {
   const [submittedFiles, setSubmittedFiles] = useState([]);
   const [comment, setComment] = useState("");
   const [evaluationMethodology, setEvaluationMethodology] = useState(null);
+  const [evaluationType, setEvaluationType] = useState(null);
 
   const { studentId, taskId } = route.params;
 
@@ -69,9 +71,31 @@ export default function TaskDetailProf() {
         setTask(response.data);
         const assignment = response.data.assignments?.[0];
         if (assignment) {
-          setSubmittedFiles(assignment.files);
-          setEvaluationMethodology(assignment.evaluation_methodology);
+          setSubmittedFiles(assignment.files || []);
+          
+          // Parsear la metodología de evaluación si viene como string
+          const methodology = typeof assignment.evaluation_methodology === 'string' 
+            ? JSON.parse(assignment.evaluation_methodology) 
+            : assignment.evaluation_methodology;
+          
+          setEvaluationMethodology(methodology);
           setQualification(assignment.qualification || '');
+          
+          // Determinar el tipo de evaluación basado en la estructura
+          if (methodology) {
+            let type = assignment.type;
+            if (!type) {
+              // Inferir el tipo desde la estructura de la metodología
+              if (methodology.criteria) {
+                type = EvaluationToolType.RUBRIC;
+              } else if (methodology.items) {
+                type = EvaluationToolType.CHECKLIST;
+              } else if (methodology.dimensions) {
+                type = EvaluationToolType.AUTO_EVALUATION;
+              }
+            }
+            setEvaluationType(type);
+          }
         }
       } else {
         handleError(new Error('No se pudo cargar la tarea'));
@@ -99,7 +123,21 @@ export default function TaskDetailProf() {
 
   // Manejar cambios en la metodología de evaluación
   const handleEvaluationChange = useCallback((updatedMethodology) => {
-    setEvaluationMethodology(updatedMethodology);
+    console.log('handleEvaluationChange called with:', updatedMethodology);
+    
+    // Mantener la estructura completa de la metodología actualizada
+    if (updatedMethodology && updatedMethodology.methodology !== undefined) {
+      // Actualizar solo la metodología, manteniendo el tipo
+      setEvaluationMethodology(updatedMethodology.methodology);
+      
+      // Si el tipo cambió, actualizarlo también
+      if (updatedMethodology.type && updatedMethodology.type !== evaluationType) {
+        console.log('Updating evaluation type from', evaluationType, 'to', updatedMethodology.type);
+        setEvaluationType(updatedMethodology.type);
+      }
+    } else {
+      console.warn('Invalid methodology update received:', updatedMethodology);
+    }
   }, []);
 
   // Manejar cambios en el puntaje desde la evaluación
@@ -108,16 +146,42 @@ export default function TaskDetailProf() {
   }, []);
 
   const handleSaveQualification = async () => {
-    if (!evaluationMethodology) {
-      Alert.alert('Error', 'No hay criterios de evaluación para guardar.');
+    console.log('handleSaveQualification called');
+    console.log('evaluationMethodology:', evaluationMethodology);
+    console.log('qualification:', qualification);
+    
+    if (!evaluationMethodology && !qualification) {
+      Alert.alert('Error', 'No hay calificación para guardar.');
       return;
     }
 
     try {
       setSaving(true);
-      await saveQualification(taskId, studentId, evaluationMethodology);
-      Alert.alert('Calificación guardada', 'La calificación ha sido guardada correctamente.');
+      const studentsData = [{
+        student_id: studentId,
+        qualification: qualification || '0',
+        comment: comment || '',
+        evaluation_methodology: evaluationMethodology
+      }];
+      
+      console.log('studentsData to send:', JSON.stringify(studentsData, null, 2));
+      
+      const response = await updateActivity(taskId, studentsData, teacherid);
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Error response:', errorText);
+        throw new Error('Error al guardar la calificación');
+      }
+      
+      Alert.alert('Éxito', 'La calificación ha sido guardada correctamente.');
+      
+      // Actualizar el estado de la tarea después de guardar
+      await fetchTaskDetails();
     } catch (error) {
+      console.error('Error in handleSaveQualification:', error);
       handleError(error, 'Error al guardar la calificación');
     } finally {
       setSaving(false);
@@ -287,11 +351,19 @@ export default function TaskDetailProf() {
             </View>
 
             {/* Sección de evaluación (si hay metodología) */}
-            {evaluationMethodology && (
+            {evaluationMethodology && evaluationType && (
               <View style={[styles.card, { backgroundColor: theme.card }]}>
-                <ThemedText style={styles.sectionTitle}>Evaluación</ThemedText>
+                <ThemedText style={styles.sectionTitle}>
+                  Evaluación (Tipo: {evaluationType === EvaluationToolType.RUBRIC ? 'Rúbrica' :
+                                     evaluationType === EvaluationToolType.CHECKLIST ? 'Lista de Cotejo' :
+                                     evaluationType === EvaluationToolType.AUTO_EVALUATION ? 'Autoevaluación' :
+                                     'Desconocido'})
+                </ThemedText>
                 <EvaluationToolViewer
-                  methodology={evaluationMethodology}
+                  methodology={{
+                    type: evaluationType,
+                    methodology: evaluationMethodology
+                  }}
                   onScoreChange={handleScoreChange}
                   onEvaluationChange={handleEvaluationChange}
                   isEditable={assignment?.status !== 2 && !isManagementClosed}

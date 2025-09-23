@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useLocalSearchParams } from "expo-router";
 import { useMemo, useState, useEffect } from "react";
 import {
   Alert,
@@ -19,7 +20,7 @@ import ParallaxScrollView from "../../components/ParallaxScrollView";
 import RubricBuilder from "../../components/RubricBuilderNew";
 import { ThemedText } from "../../components/ThemedText";
 import { ThemedView } from "../../components/ThemedView";
-import { createActivity, getWeightsByDimension } from "../../services/activity";
+import { createActivity, updateActivity, getWeightsByDimension, getActivityById } from "../../services/activity";
 import { useGlobalState } from "../../services/UserContext";
 import {
   createEmptyChecklist,
@@ -36,16 +37,23 @@ export default function NewTaskScreen() {
   const { globalState } = useGlobalState();
   const { cursoid, materiaid, teacherid, materiaName, cursoName } = globalState;
   const navigation = useNavigation();
+  const params = useLocalSearchParams();
 
   // Estados
   const [formData, setFormData] = useState({
     name: "",
     date: "",
+    startDate: "",
     ponderacion: "",
     descripcion: "",
     tipo: "1",
     type: 0, // 0 = tarea para entregar, 1 = tarea solo para calificar
+    isPastTask: false,
   });
+
+  // Estado para edición
+  const [editTask, setEditTask] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Estado para herramientas de evaluación
   const [evaluationTool, setEvaluationTool] = useState({
@@ -78,11 +86,181 @@ export default function NewTaskScreen() {
     { value: "5", text: "Autoevaluación" },
   ];
 
+  // Detectar si es modo edición
+  const { idTask } = params;
+  const isEditing = !!idTask;
+
+  // Función para mapear los datos de evaluación desde el backend al frontend
+  const mapEvaluationToolFromBackend = (backendData) => {
+    if (!backendData || !backendData.evaluationTool) {
+      return { type: null, data: null };
+    }
+
+    const { type, methodology } = backendData.evaluationTool;
+
+    // Mapear tipo de herramienta
+    let mappedType = null;
+    if (type === 1) {
+      mappedType = EvaluationToolType.RUBRIC;
+    } else if (type === 2) {
+      mappedType = EvaluationToolType.CHECKLIST;
+    } else if (type === 3) {
+      mappedType = EvaluationToolType.AUTO_EVALUATION;
+    }
+
+    if (!methodology) {
+      return {
+        type: mappedType,
+        data: mappedType === EvaluationToolType.RUBRIC
+          ? { title: 'Rúbrica de Evaluación', criteria: [] }
+          : mappedType === EvaluationToolType.CHECKLIST
+          ? { title: 'Lista de Cotejo', items: [] }
+          : mappedType === EvaluationToolType.AUTO_EVALUATION
+          ? { title: 'Autoevaluación', dimensions: [{ name: 'SER', criteria: [] }, { name: 'DECIDIR', criteria: [] }] }
+          : null
+      };
+    }
+
+    let mappedData = null;
+    try {
+      const methodologyData = typeof methodology === 'string'
+        ? JSON.parse(methodology)
+        : methodology;
+
+      if (mappedType === EvaluationToolType.RUBRIC) {
+        if (methodologyData.criteria && Array.isArray(methodologyData.criteria)) {
+          mappedData = {
+            title: methodologyData.title || 'Rúbrica de Evaluación',
+            criteria: methodologyData.criteria.map(criterion => ({
+              name: criterion.name || '',
+              weight: criterion.weight || 0,
+              levels: criterion.levels && Array.isArray(criterion.levels)
+                ? criterion.levels.map(level => ({
+                    description: level.description || '',
+                    score: level.score || 0
+                  }))
+                : [
+                    { description: 'Excelente', score: 5 },
+                    { description: 'Bueno', score: 3 },
+                    { description: 'Regular', score: 1 }
+                  ]
+            }))
+          };
+        }
+      } else if (mappedType === EvaluationToolType.CHECKLIST) {
+        if (methodologyData.items && Array.isArray(methodologyData.items)) {
+          mappedData = {
+            title: methodologyData.title || 'Lista de Cotejo',
+            items: methodologyData.items.map(item => ({
+              description: item.description || '',
+              required: item.required !== undefined ? item.required : true
+            }))
+          };
+        }
+      } else if (mappedType === EvaluationToolType.AUTO_EVALUATION) {
+        if (methodologyData.dimensions && Array.isArray(methodologyData.dimensions)) {
+          mappedData = {
+            title: methodologyData.title || 'Autoevaluación',
+            dimensions: methodologyData.dimensions.map(dimension => ({
+              name: dimension.name,
+              criteria: dimension.criteria && Array.isArray(dimension.criteria)
+                ? dimension.criteria.map(criterion => ({
+                    description: criterion.description || '',
+                    levels: criterion.levels && Array.isArray(criterion.levels)
+                      ? criterion.levels.map(level => ({
+                          name: level.name || '',
+                          value: level.value || 0,
+                          selected: level.selected || false
+                        }))
+                      : [
+                          { name: 'Si', value: 3, selected: false },
+                          { name: 'A veces', value: 2, selected: false },
+                          { name: 'No', value: 1, selected: false }
+                        ]
+                  }))
+                : []
+            }))
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing evaluation methodology:', error);
+    }
+
+    if (!mappedData) {
+      mappedData = mappedType === EvaluationToolType.RUBRIC
+        ? { title: 'Rúbrica de Evaluación', criteria: [] }
+        : mappedType === EvaluationToolType.CHECKLIST
+        ? { title: 'Lista de Cotejo', items: [] }
+        : mappedType === EvaluationToolType.AUTO_EVALUATION
+        ? { title: 'Autoevaluación', dimensions: [{ name: 'SER', criteria: [] }, { name: 'DECIDIR', criteria: [] }] }
+        : null;
+    }
+
+    return { type: mappedType, data: mappedData };
+  };
+
+  // Función para resetear el formulario
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      date: '',
+      startDate: '',
+      ponderacion: '',
+      descripcion: '',
+      tipo: '1',
+      type: 0,
+      isPastTask: false
+    });
+    setEvaluationTool({ type: null, data: null });
+  };
+
+  // Cargar datos de tarea para edición
+  useEffect(() => {
+    const loadTaskForEdit = async () => {
+      if (!isEditing || !idTask) return;
+
+      setLoading(true);
+      try {
+        const response = await getActivityById(idTask);
+        if (response.ok && response.data) {
+          const task = response.data;
+          const startDate = new Date(task.start_date);
+          const endDate = new Date(task.end_date);
+          const isPastTask = startDate < new Date();
+
+          setFormData({
+            name: task.name || '',
+            date: task.end_date ? task.end_date.slice(0, 10) : '',
+            startDate: task.start_date ? task.start_date.slice(0, 10) : '',
+            ponderacion: String(task.weight || 0),
+            descripcion: task.description || '',
+            tipo: String(task.dimension_id || '1'),
+            type: task.type || 0,
+            isPastTask: isPastTask
+          });
+
+          // Mapear herramienta de evaluación
+          const mappedEvaluationTool = mapEvaluationToolFromBackend(task);
+          setEvaluationTool(mappedEvaluationTool);
+          setEditTask(task);
+        }
+      } catch (error) {
+        console.error('Error loading task for edit:', error);
+        Alert.alert('Error', 'No se pudo cargar la tarea para editar');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTaskForEdit();
+  }, [isEditing, idTask]);
+
   // Cargar pesos por dimensión al inicializar el componente
   useEffect(() => {
     const fetchDimensionWeights = async () => {
       if (!cursoid || !materiaid || !teacherid || !globalState.management?.id) return;
-      
+
       setLoadingWeights(true);
       try {
         const today = new Date().toISOString().split('T')[0];
@@ -136,21 +314,12 @@ export default function NewTaskScreen() {
   };
 
   const handleInputChange = (field, value) => {
-    // Lógica especial para autoevaluación
     if (field === 'tipo' && value === '5') {
-      setFormData((prev) => ({
-        ...prev,
-        [field]: value,
-        ponderacion: '100', // Autoevaluación siempre es 100%
-      }));
+      setFormData(prev => ({ ...prev, [field]: value, ponderacion: '100' }));
     } else {
-      setFormData((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
+      setFormData(prev => ({ ...prev, [field]: value }));
     }
-    
-    // Validar ponderación en tiempo real para dimensiones que no sean autoevaluación
+
     if (field === 'ponderacion' && formData.tipo && formData.tipo !== '5') {
       const weightValue = Number(value);
       if (!isNaN(weightValue) && weightValue > 0) {
@@ -162,30 +331,36 @@ export default function NewTaskScreen() {
         }
       }
     }
-    
-    // Limpiar errores si se cambia de dimensión
+
     if (field === 'tipo') {
-      setFormError('');
       const isAutoEvaluationDimension = value === '5';
       const currentToolType = evaluationTool.type;
-      
-      // Limpiar herramienta de evaluación si cambia entre autoevaluación y otras dimensiones
-      if (isAutoEvaluationDimension && currentToolType && currentToolType !== EvaluationToolType.AUTO_EVALUATION) {
-        // Cambió a autoevaluación pero tiene herramienta incompatible
+
+      // Limpiar errores previos
+      setFormError('');
+
+      if (isAutoEvaluationDimension && currentToolType !== EvaluationToolType.AUTO_EVALUATION) {
         setEvaluationTool({ type: null, data: null });
-      } else if (!isAutoEvaluationDimension && currentToolType === EvaluationToolType.AUTO_EVALUATION) {
-        // Cambió de autoevaluación a otra dimensión
+      }
+      else if (!isAutoEvaluationDimension && currentToolType === EvaluationToolType.AUTO_EVALUATION) {
         setEvaluationTool({ type: null, data: null });
       }
     }
   };
 
   const handleCheckboxToggle = () => {
-    setFormData((prev) => ({
+    setFormData(prev => ({ ...prev, type: prev.type === 0 ? 1 : 0 }));
+  };
+
+  const handlePastTaskToggle = (checked) => {
+    setFormData(prev => ({
       ...prev,
-      type: prev.type === 0 ? 1 : 0,
+      isPastTask: checked,
+      startDate: checked ? prev.startDate : '',
+      date: checked ? prev.date : ''
     }));
   };
+
 
   const handleEvaluationToolChange = (type) => {
     if (type === null) {
@@ -218,205 +393,269 @@ export default function NewTaskScreen() {
   };
 
   const validateForm = () => {
-    const { name, date, ponderacion, descripcion } = formData;
-    
-    // Validaciones básicas
-    if (!name || !date || !ponderacion || !descripcion) {
-      Alert.alert(
-        "Campos Incompletos",
-        "Por favor, completa todos los campos requeridos.",
-        [{ text: "Entendido" }]
-      );
+    const { name, date, startDate, ponderacion, descripcion, isPastTask } = formData;
+
+    if (!name || !ponderacion || !descripcion) {
+      setFormError('Por favor, completa todos los campos requeridos.');
       return false;
     }
 
+    // Validar fechas según el tipo de tarea
+    if (isPastTask) {
+      if (!startDate || !date) {
+        setFormError('Por favor, completa ambas fechas para la tarea pasada.');
+        return false;
+      }
+      const start = new Date(startDate);
+      const end = new Date(date);
+      if (end < start) {
+        setFormError('La fecha de fin debe ser posterior a la fecha de inicio.');
+        return false;
+      }
+    } else {
+      if (!date) {
+        setFormError('Por favor, ingresa la fecha de entrega.');
+        return false;
+      }
+      const now = new Date();
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      if (endDate <= now) {
+        setFormError('La fecha de entrega debe ser posterior a la fecha y hora actual.');
+        return false;
+      }
+    }
+
     const pondValue = Number(ponderacion);
-    if (isNaN(pondValue) || pondValue <= 0 || pondValue > 100) {
-      Alert.alert(
-        "Ponderación Inválida",
-        "La ponderación debe ser un número entre 1 y 100.",
-        [{ text: "Entendido" }]
-      );
+    if (isNaN(pondValue) || pondValue < 1 || pondValue > 100) {
+      setFormError('La ponderación debe ser un número entre 1 y 100.');
       return false;
     }
 
     const dimensionId = formData.tipo;
-    
+
     // Validación especial para autoevaluación
     if (dimensionId === '5') {
-      if (isAutoEvaluationExists()) {
-        Alert.alert(
-          "Autoevaluación ya existe",
-          "Ya existe una autoevaluación para este trimestre. Solo se permite una autoevaluación por trimestre.",
-          [{ text: "Entendido" }]
-        );
+      if (!isEditing && isAutoEvaluationExists()) {
+        setFormError('Ya existe una autoevaluación para este trimestre. Solo se permite una autoevaluación por trimestre.');
         return false;
       }
-      
+
       // Para autoevaluación, la ponderación debe ser 100%
       if (pondValue !== 100) {
-        Alert.alert(
-          "Ponderación Incorrecta",
-          "La autoevaluación debe tener una ponderación del 100%.",
-          [{ text: "Entendido" }]
-        );
+        setFormError('La autoevaluación debe tener una ponderación del 100%.');
         return false;
       }
     } else {
       // Validar pesos por dimensión para otras dimensiones
       const currentWeight = dimensionWeights[dimensionId]?.weight || 0;
       const availableWeight = 100 - currentWeight;
-      
-      if (currentWeight >= 100) {
-        Alert.alert(
-          "Dimensión completa",
-          `La dimensión ${getDimensionName(dimensionId)} ya tiene el 100% asignado. Ajusta otras tareas de esta dimensión.`,
-          [{ text: "Entendido" }]
-        );
-        return false;
-      }
-      
-      if (pondValue > availableWeight) {
-        Alert.alert(
-          "Ponderación excedida",
-          `La ponderación no puede ser mayor a ${availableWeight}% (disponible en la dimensión ${getDimensionName(dimensionId)}).`,
-          [{ text: "Entendido" }]
-        );
-        return false;
-      }
-    }
 
-    // Validar fecha de entrega
-    const now = new Date();
-    const endDate = new Date(date);
-    endDate.setHours(23, 59, 59, 999);
-    if (endDate <= now) {
-      Alert.alert(
-        "Fecha Inválida",
-        "La fecha de entrega debe ser posterior a la fecha y hora actual.",
-        [{ text: "Entendido" }]
-      );
-      return false;
+      if (currentWeight >= 100 && !isEditing) {
+        setFormError(`La dimensión ${getDimensionName(dimensionId)} ya tiene el 100% asignado. Ajusta otras tareas de esta dimensión.`);
+        return false;
+      }
+
+      if (pondValue > availableWeight) {
+        setFormError(`La ponderación no puede ser mayor a ${availableWeight}% (disponible en la dimensión ${getDimensionName(dimensionId)}).`);
+        return false;
+      }
     }
 
     // Validar herramientas de evaluación solo si están configuradas
     if (evaluationTool.type && evaluationTool.data) {
       if (evaluationTool.type === EvaluationToolType.RUBRIC) {
         if (!validateRubricData(evaluationTool.data)) {
-          Alert.alert(
-            "Rúbrica Incompleta",
-            "La rúbrica debe tener un título y al menos un criterio completo.",
-            [{ text: "Entendido" }]
-          );
+          setFormError('La rúbrica debe tener un título y al menos un criterio completo.');
           return false;
         }
       } else if (evaluationTool.type === EvaluationToolType.CHECKLIST) {
         if (!validateChecklistData(evaluationTool.data)) {
-          Alert.alert(
-            "Lista de Cotejo Incompleta",
-            "La lista de cotejo debe tener un título y al menos un ítem.",
-            [{ text: "Entendido" }]
-          );
+          setFormError('La lista de cotejo debe tener un título y al menos un ítem.');
           return false;
         }
       } else if (evaluationTool.type === EvaluationToolType.AUTO_EVALUATION) {
         if (!validateAutoEvaluationData(evaluationTool.data)) {
-          Alert.alert(
-            "Autoevaluación Incompleta",
-            "La autoevaluación debe tener un título y al menos un criterio con niveles en alguna dimensión.",
-            [{ text: "Entendido" }]
-          );
+          setFormError('La autoevaluación debe tener un título y al menos un criterio con niveles en alguna dimensión.');
           return false;
+        }
+        for (const dimension of evaluationTool.data.dimensions) {
+          for (const criterion of dimension.criteria) {
+            if (criterion.levels.length === 0) {
+              setFormError('Cada criterio debe tener al menos un nivel de evaluación');
+              return false;
+            }
+          }
         }
       }
     }
 
     // Validación especial para tareas de solo calificar
-    if (formData.type === 1 && !evaluationTool.type) {
-      Alert.alert(
-        "Herramienta Requerida",
-        "Las tareas solo para calificar requieren una herramienta de evaluación.",
-        [{ text: "Entendido" }]
-      );
-      return false;
+    if (formData.type === 1) {
+      if (!evaluationTool.type) {
+        setFormError('Seleccione una herramienta de evaluación');
+        return false;
+      }
     }
 
     // Validación especial para autoevaluación: debe tener herramienta automáticamente
     if (dimensionId === '5') {
       if (!evaluationTool.type || evaluationTool.type !== EvaluationToolType.AUTO_EVALUATION) {
-        Alert.alert(
-          "Herramienta Requerida",
-          "La autoevaluación requiere seleccionar la herramienta de autoevaluación.",
-          [{ text: "Entendido" }]
-        );
+        setFormError('La autoevaluación requiere seleccionar la herramienta de autoevaluación.');
         return false;
       }
     }
 
+    setFormError('');
     return true;
   };
-  const handleCreateTask = async () => {
+  const handleCreateOrUpdateTask = async () => {
     if (!validateForm()) return;
 
-    // Obtener la fecha actual para start_date
-    const today = new Date();
-    const startDate = today.toISOString();
+    const pondValue = Number(formData.ponderacion);
+    const dimensionId = formData.tipo;
 
-    // Convertir la fecha de entrega a formato ISO con hora final del día
-    const endDate = new Date(formData.date);
-    endDate.setHours(23, 59, 59, 999);
-    const endDateISO = endDate.toISOString();
+    if (dimensionId === '5' && !isEditing && isAutoEvaluationExists()) {
+      Alert.alert(
+        "Autoevaluación ya existe",
+        "Ya existe una autoevaluación para este trimestre. Solo se permite una autoevaluación por trimestre.",
+        [{ text: "Entendido" }]
+      );
+      return;
+    }
 
-    const newTask = {
-      task: {
-        name: formData.name,
-        description: formData.descripcion,
-        dimension_id: Number(formData.tipo),
-        management_id: globalState.management.id, // Asumiendo que management tiene id
-        professor_id: teacherid,
-        subject_id: materiaid,
-        course_id: cursoid,
-        weight: Number(formData.ponderacion),
-        is_autoevaluation: 0,
-        quarter: "Q1",
-        type: formData.type,
-        start_date: startDate,
-        end_date: endDateISO,
-      },
-    };
+    // Validar pesos por dimensión (solo para dimensiones que no sean autoevaluación en edición)
+    if (dimensionId !== '5') {
+      const currentWeight = dimensionWeights[dimensionId]?.weight || 0;
+      const availableWeight = 100 - currentWeight;
 
-    // Agregar herramienta de evaluación si está definida
-    if (evaluationTool.type && evaluationTool.data) {
-      newTask.tool = {
-        type: evaluationTool.type,
-        methodology: evaluationTool.data,
-      };
+      if (currentWeight >= 100 && !isEditing) {
+        Alert.alert(
+          "Dimensión completa",
+          `La dimensión ${getDimensionName(dimensionId)} ya tiene el 100% asignado. Ajusta otras tareas de esta dimensión.`,
+          [{ text: "Entendido" }]
+        );
+        return;
+      }
+
+      if (pondValue > availableWeight) {
+        Alert.alert(
+          "Ponderación excedida",
+          `La ponderación no puede ser mayor a ${availableWeight}% (disponible en la dimensión ${getDimensionName(dimensionId)}).`,
+          [{ text: "Entendido" }]
+        );
+        return;
+      }
+    }
+
+    if (formData.type === 1 && !evaluationTool.type) {
+      setFormError('Seleccione una herramienta de evaluación');
+      return;
     }
 
     try {
-      await createActivity(newTask, teacherid);
-      const management = globalState.management;
-      Alert.alert("Éxito", "La tarea se creó correctamente", [
-        {
-          text: "OK",
-          onPress: () =>
-            navigation.replace("curso", {
-              screen: "index",
-              params: {
-                materiaName,
-                cursoName,
-                materiaid,
-                cursoid,
-                teacherid,
-                management,
-              },
-            }),
-        },
-      ]);
+      const now = new Date();
+      const startDate = formData.isPastTask ? formData.startDate : now.toISOString();
+      const endDate = new Date(formData.date);
+      endDate.setHours(23, 59, 59, 999);
+      const endDateISO = endDate.toISOString();
+
+      if (isEditing) {
+        const updatePayload = {
+          task: {
+            id: editTask.id,
+            name: formData.name,
+            description: formData.descripcion,
+            dimension_id: Number(formData.tipo),
+            management_id: Number(globalState.management.id),
+            professor_id: Number(teacherid),
+            subject_id: Number(materiaid),
+            course_id: cursoid,
+            weight: Number(formData.ponderacion),
+            is_autoevaluation: 0,
+            quarter: 'Q1',
+            type: formData.type,
+            start_date: formData.isPastTask ? formData.startDate : editTask.start_date,
+            end_date: endDateISO
+          }
+        };
+
+        const update_payload = {
+          task: updatePayload,
+          tool: evaluationTool.type ? {
+            type: evaluationTool.type,
+            methodology: evaluationTool.data
+          } : null
+        };
+
+        await updateActivity(editTask.id, update_payload);
+
+        Alert.alert("Éxito", "La tarea se actualizó correctamente", [
+          {
+            text: "OK",
+            onPress: () =>
+              navigation.replace("curso", {
+                screen: "index",
+                params: {
+                  materiaName,
+                  cursoName,
+                  materiaid,
+                  cursoid,
+                  teacherid,
+                  management: globalState.management,
+                },
+              }),
+          },
+        ]);
+      } else {
+        const taskPayload = {
+          name: formData.name,
+          description: formData.descripcion,
+          dimension_id: Number(formData.tipo),
+          management_id: Number(globalState.management.id),
+          professor_id: Number(teacherid),
+          subject_id: Number(materiaid),
+          course_id: cursoid,
+          weight: Number(formData.ponderacion),
+          is_autoevaluation: 0,
+          quarter: 'Q1',
+          type: formData.type,
+          start_date: startDate,
+          end_date: endDateISO
+        };
+
+        const payload = {
+          task: taskPayload,
+          tool: evaluationTool.type ? {
+            type: evaluationTool.type,
+            methodology: evaluationTool.data
+          } : null
+        };
+
+        await createActivity(payload);
+
+        Alert.alert("Éxito", "La tarea se creó correctamente", [
+          {
+            text: "OK",
+            onPress: () =>
+              navigation.replace("curso", {
+                screen: "index",
+                params: {
+                  materiaName,
+                  cursoName,
+                  materiaid,
+                  cursoid,
+                  teacherid,
+                  management: globalState.management,
+                },
+              }),
+          },
+        ]);
+      }
     } catch (error) {
       Alert.alert(
         "Error",
-        "No se pudo crear la tarea. Por favor, intenta nuevamente.",
+        isEditing ? "No se pudo actualizar la tarea." : "No se pudo crear la tarea. Por favor, intenta nuevamente.",
         [{ text: "Entendido" }]
       );
       console.log(error);
@@ -440,7 +679,7 @@ export default function NewTaskScreen() {
       <ThemedView style={styles.titleContainer}>
         <View style={styles.titleSection}>
           <ThemedText type="title" style={{ color: colors.text }}>
-            Nueva Tarea
+            {isEditing ? 'Editar Tarea' : 'Nueva Tarea'}
           </ThemedText>
           <View style={styles.subtitleRow}>
             <ThemedText
@@ -459,6 +698,15 @@ export default function NewTaskScreen() {
         </View>
       </ThemedView>
 
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.success} />
+          <ThemedText style={{ color: colors.text, marginTop: 10 }}>
+            Cargando tarea...
+          </ThemedText>
+        </View>
+      )}
+
       <InputType
         label="Nombre de la Tarea"
         value={formData.name}
@@ -468,14 +716,53 @@ export default function NewTaskScreen() {
         required
       />
 
-      <InputType
-        label="Fecha de Entrega"
-        value={formData.date}
-        onChangeText={(value) => handleInputChange("date", value)}
-        type="date"
-        placeholder="Seleccionar fecha"
-        required
-      />
+      <View style={styles.checkboxContainer}>
+        <TouchableOpacity
+          style={[
+            styles.checkbox,
+            { borderColor: colors.secondaryText },
+            formData.isPastTask && { backgroundColor: "#17A2B8" },
+          ]}
+          onPress={() => handlePastTaskToggle(!formData.isPastTask)}
+        >
+          {formData.isPastTask && (
+            <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+          )}
+        </TouchableOpacity>
+        <ThemedText style={[styles.checkboxLabel, { color: colors.text }]}>
+          Crear tarea pasada
+        </ThemedText>
+      </View>
+
+      {formData.isPastTask ? (
+        <View style={styles.dateGrid}>
+          <InputType
+            label="Fecha de Inicio"
+            value={formData.startDate}
+            onChangeText={(value) => handleInputChange("startDate", value)}
+            type="date"
+            placeholder="Seleccionar fecha"
+            required
+          />
+          <InputType
+            label="Fecha de Fin"
+            value={formData.date}
+            onChangeText={(value) => handleInputChange("date", value)}
+            type="date"
+            placeholder="Seleccionar fecha"
+            required
+          />
+        </View>
+      ) : (
+        <InputType
+          label="Fecha de Entrega"
+          value={formData.date}
+          onChangeText={(value) => handleInputChange("date", value)}
+          type="date"
+          placeholder="Seleccionar fecha"
+          required
+        />
+      )}
 
       <InputType
         label="Ponderación (%)"
@@ -594,9 +881,9 @@ export default function NewTaskScreen() {
       </TouchableOpacity>
 
       <ButtonLink
-        text="Crear Tarea"
+        text={isEditing ? "Actualizar Tarea" : "Crear Tarea"}
         modo="large"
-        onPress={handleCreateTask}
+        onPress={handleCreateOrUpdateTask}
         color="primary"
         style={styles.submitButton}
       />
@@ -639,7 +926,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 5,
-    paddingVertical: 0,
+    paddingVertical: 10,
     marginTop: 0,
     gap: 10,
   },
@@ -654,6 +941,15 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: 14,
     flex: 1,
+  },
+  dateGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
   },
   evaluationSection: {
     marginTop: 20,

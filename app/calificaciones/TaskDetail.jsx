@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, useColorScheme, TouchableOpacity, ActivityIndicator, Image, ScrollView, Linking, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { useRoute } from '@react-navigation/native';
-import { getTaskByIdwithassignments, submitTaskFiles, cancelSubmitTaskFiles } from '../../services/activity';
+import { getTaskByIdwithassignments, submitTaskFiles, cancelSubmitTaskFiles, updateActivity } from '../../services/activity';
 import { useGlobalState } from '../../services/UserContext';
 import { useAuth } from '../../services/AuthProvider';
 import { handleError } from '../../utils/errorHandler';
@@ -68,43 +68,45 @@ export default function TaskDetailScreen() {
     const isAutoEvaluation = assignment?.type === EvaluationToolType.AUTO_EVALUATION;
 
     if (isAutoEvaluation && assignment?.evaluation_methodology) {
-      setAutoEvaluationData((prevData) => {
-        if (JSON.stringify(prevData) === JSON.stringify(assignment.evaluation_methodology)) {
-          return prevData; // Evitar actualizaciones innecesarias
+      const methodology = typeof assignment.evaluation_methodology === 'string'
+        ? JSON.parse(assignment.evaluation_methodology)
+        : assignment.evaluation_methodology;
+
+      // Solo actualizar si realmente cambió
+      setAutoEvaluationData(prevData => {
+        if (JSON.stringify(prevData) !== JSON.stringify(methodology)) {
+          return methodology;
         }
-        return assignment.evaluation_methodology;
+        return prevData;
       });
 
-      setEvaluationMethodology((prevMethodology) => {
+      setEvaluationMethodology(prevMethodology => {
         const newMethodology = {
           type: assignment.type,
-          methodology: assignment.evaluation_methodology,
+          methodology: methodology,
         };
-        if (JSON.stringify(prevMethodology) === JSON.stringify(newMethodology)) {
-          return prevMethodology; // Evitar actualizaciones innecesarias
+        if (JSON.stringify(prevMethodology) !== JSON.stringify(newMethodology)) {
+          return newMethodology;
         }
-        return newMethodology;
+        return prevMethodology;
       });
 
-      const score = calculateAutoEvaluationScore(assignment.evaluation_methodology);
-      setAutoEvaluationScore((prevScore) => {
-        if (prevScore === score) {
-          return prevScore; // Evitar actualizaciones innecesarias
-        }
-        return score;
-      });
+      // Calcular score y completitud solo si la metodología cambió
+      const score = calculateAutoEvaluationScore(methodology);
+      setAutoEvaluationScore(prevScore => prevScore !== score ? score : prevScore);
 
-      const isComplete = assignment.evaluation_methodology.dimensions.every((dimension) =>
-        dimension.criteria.every((criterion) =>
-          criterion.levels.some((level) => level.selected)
+      const isComplete = methodology.dimensions?.every((dimension) =>
+        dimension.criteria?.every((criterion) =>
+          criterion.levels?.some((level) => level.selected)
         )
-      );
-      setIsAutoEvaluationComplete((prevComplete) => {
-        if (prevComplete === isComplete) {
-          return prevComplete; // Evitar actualizaciones innecesarias
-        }
-        return isComplete;
-      });
+      ) || false;
+      setIsAutoEvaluationComplete(prevComplete => prevComplete !== isComplete ? isComplete : prevComplete);
+    } else {
+      // Limpiar estados si no es autoevaluación
+      setAutoEvaluationData(null);
+      setEvaluationMethodology(null);
+      setAutoEvaluationScore(0);
+      setIsAutoEvaluationComplete(false);
     }
   }, [task]);
 
@@ -115,8 +117,8 @@ export default function TaskDetailScreen() {
       if (response.ok && response.data) {
         setTask(response.data);
         const assignment = response.data.assignments?.[0];
-        if (assignment && assignment.files) {
-          setSubmittedFiles(assignment.files);
+        if (assignment) {
+          setSubmittedFiles(assignment.files || []);
         }
       } else {
         handleError(new Error('No se pudo cargar la tarea'));
@@ -316,18 +318,56 @@ export default function TaskDetailScreen() {
   };
 
   // Handlers para autoevaluación
-  const handleAutoEvaluationChange = (updatedMethodology, score) => {
-    setAutoEvaluationData(updatedMethodology);
-    setAutoEvaluationScore(score);
-    setEvaluationMethodology({
-      type: EvaluationToolType.AUTO_EVALUATION,
-      methodology: updatedMethodology
+  const handleAutoEvaluationChange = useCallback((updatedMethodology, score) => {
+    // Evitar actualizaciones si no hay cambios reales
+    setAutoEvaluationData(prevData => {
+      if (JSON.stringify(prevData) === JSON.stringify(updatedMethodology)) {
+        return prevData;
+      }
+      return updatedMethodology;
     });
-  };
 
-  const handleAutoEvaluationCompletion = (isComplete) => {
-    setIsAutoEvaluationComplete(isComplete);
-  };
+    setAutoEvaluationScore(prevScore => {
+      if (prevScore === score) {
+        return prevScore;
+      }
+      return score;
+    });
+
+    setEvaluationMethodology(prevMethodology => {
+      const newMethodology = {
+        type: EvaluationToolType.AUTO_EVALUATION,
+        methodology: updatedMethodology
+      };
+      if (JSON.stringify(prevMethodology) === JSON.stringify(newMethodology)) {
+        return prevMethodology;
+      }
+      return newMethodology;
+    });
+
+    // Actualizar estado de completitud
+    const isComplete = updatedMethodology.dimensions?.every((dimension) =>
+      dimension.criteria?.every((criterion) =>
+        criterion.levels?.some((level) => level.selected)
+      )
+    ) || false;
+
+    setIsAutoEvaluationComplete(prevComplete => {
+      if (prevComplete === isComplete) {
+        return prevComplete;
+      }
+      return isComplete;
+    });
+  }, []);
+
+  const handleAutoEvaluationCompletion = useCallback((isComplete) => {
+    setIsAutoEvaluationComplete(prevComplete => {
+      if (prevComplete === isComplete) {
+        return prevComplete;
+      }
+      return isComplete;
+    });
+  }, []);
 
   const handleSaveAutoEvaluation = async () => {
     if (!autoEvaluationData || !isAutoEvaluationComplete) {
@@ -344,8 +384,16 @@ export default function TaskDetailScreen() {
     try {
       setIsUploading(true);
       
-      // En lugar de archivos, enviamos la metodología de evaluación
-      const response = await submitTaskFiles(taskId, studentId, [], autoEvaluationData);
+      const studentsData = [{
+        student_id: parseInt(studentId),
+        qualification: autoEvaluationScore.toString(),
+        comment: '',
+        evaluation_methodology: autoEvaluationData
+      }];
+      
+      console.log('Datos enviados para autoevaluación:', studentsData);
+      
+      const response = await updateActivity(taskId, studentsData);
       
       if (response.ok) {
         Alert.alert('Éxito', 'Autoevaluación enviada correctamente');
@@ -376,10 +424,48 @@ export default function TaskDetailScreen() {
   }
 
   const assignment = task?.assignments?.[0];
-  const qualification = assignment?.qualification?.trim() || '-';
+  const qualification = assignment?.status === 2 ? (assignment?.qualification?.trim() || '-') : '0';
   const comment = assignment?.comment || '';
   const isSubmitted = assignment?.status === 1 || assignment?.status === 2;
   const isLate = new Date(task?.end_date) < new Date();
+  
+  // Función para limpiar selecciones por defecto en metodología para tareas no calificadas
+  const cleanMethodologyForUnevaluated = (methodology, type) => {
+    if (!methodology) return methodology;
+
+    const cleaned = JSON.parse(JSON.stringify(methodology)); // Deep clone
+
+    if (type === 1) { // Rúbrica
+      if (cleaned.criteria) {
+        cleaned.criteria.forEach(criterion => {
+          criterion.selected = undefined; // Limpiar selección del criterio
+        });
+      }
+    } else if (type === 2) { // Checklist
+      if (cleaned.items) {
+        cleaned.items.forEach(item => {
+          item.checked = false; // Asegurar que no esté checked
+        });
+      }
+    } else if (type === 3) { // Autoevaluación
+      if (cleaned.dimensions) {
+        cleaned.dimensions.forEach(dimension => {
+          if (dimension.criteria) {
+            dimension.criteria.forEach(criterion => {
+              if (criterion.levels) {
+                criterion.levels.forEach(level => {
+                  level.selected = false; // Asegurar que no esté selected
+                });
+              }
+            });
+          }
+        });
+      }
+    }
+
+    return cleaned;
+  };
+
   const isAutoEvaluation = assignment?.type === EvaluationToolType.AUTO_EVALUATION;
 
   return (
@@ -472,7 +558,7 @@ export default function TaskDetailScreen() {
               Calificación: {qualification}
             </ThemedText>
           </View>
-          {comment && (
+          {comment && assignment?.status === 2 && (
             <>
               <View style={[styles.divider, { backgroundColor: theme.border, marginVertical: 12 }]} />
               <View style={[styles.commentContainer, { 
@@ -496,13 +582,24 @@ export default function TaskDetailScreen() {
       </View>
 
       {/* Sección de metodología de evaluación (si existe) */}
-      {assignment?.evaluation_methodology && (
+      {((assignment?.evaluation_methodology && assignment?.type) || (isAutoEvaluation && autoEvaluationData)) && (
         <View style={[styles.card, { backgroundColor: theme.card }]}>
           <ThemedText style={styles.sectionTitle}>Criterios de Evaluación</ThemedText>
           <EvaluationToolViewer
             methodology={{
-              type: assignment.evaluation_methodology.items ? 2 : 1, // 2 = Checklist, 1 = Rubric
-              methodology: assignment.evaluation_methodology
+              type: assignment?.type || EvaluationToolType.AUTO_EVALUATION,
+              methodology: isAutoEvaluation && autoEvaluationData
+                ? autoEvaluationData
+                : assignment?.status === 2
+                ? (typeof assignment.evaluation_methodology === 'string'
+                    ? JSON.parse(assignment.evaluation_methodology)
+                    : assignment.evaluation_methodology)
+                : cleanMethodologyForUnevaluated(
+                    typeof assignment.evaluation_methodology === 'string'
+                      ? JSON.parse(assignment.evaluation_methodology)
+                      : assignment.evaluation_methodology,
+                    assignment.type
+                  )
             }}
             isEditable={false} // Solo lectura para estudiantes
           />

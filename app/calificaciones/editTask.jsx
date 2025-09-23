@@ -9,11 +9,12 @@ import { ButtonLink } from '../../components/ButtonLink';
 import EvaluationToolSelector from '../../components/EvaluationToolSelector';
 import RubricBuilder from '../../components/RubricBuilderNew';
 import ChecklistBuilder from '../../components/ChecklistBuilderNew';
+import AutoEvaluationBuilder from '../../components/AutoEvaluationBuilder';
 import { updateActivity, getActivityById, updateTask } from '../../services/activity';
 import { useGlobalState } from '../../services/UserContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useColorScheme } from 'react-native';
-import { EvaluationToolType, validateRubricData, validateChecklistData } from '../../types/evaluation';
+import { EvaluationToolType, validateRubricData, validateChecklistData, validateAutoEvaluationData } from '../../types/evaluation';
 
 export default function EditTaskScreen() {
     const colorScheme = useColorScheme();
@@ -33,6 +34,7 @@ export default function EditTaskScreen() {
     const [selectedEvaluationTool, setSelectedEvaluationTool] = useState(null);
     const [rubricData, setRubricData] = useState(null);
     const [checklistData, setChecklistData] = useState(null);
+    const [autoEvaluationData, setAutoEvaluationData] = useState(null);
 
     const { idTask } = route.params;
 
@@ -50,15 +52,21 @@ export default function EditTaskScreen() {
             mappedType = EvaluationToolType.RUBRIC;
         } else if (type === 2) {
             mappedType = EvaluationToolType.CHECKLIST;
+        } else if (type === 3) {
+            mappedType = EvaluationToolType.AUTO_EVALUATION;
         }
 
         // Si no hay metodología, retornar datos por defecto
         if (!methodology) {
             return {
                 type: mappedType,
-                data: mappedType === EvaluationToolType.RUBRIC 
+                data: mappedType === EvaluationToolType.RUBRIC
                     ? { title: 'Rúbrica de Evaluación', criteria: [] }
-                    : { title: 'Lista de Cotejo', items: [] }
+                    : mappedType === EvaluationToolType.CHECKLIST
+                    ? { title: 'Lista de Cotejo', items: [] }
+                    : mappedType === EvaluationToolType.AUTO_EVALUATION
+                    ? { title: 'Autoevaluación', dimensions: [{ name: 'SER', criteria: [] }, { name: 'DECIDIR', criteria: [] }] }
+                    : null
             };
         }
 
@@ -98,15 +106,44 @@ export default function EditTaskScreen() {
                         }))
                     };
                 }
+            } else if (mappedType === EvaluationToolType.AUTO_EVALUATION) {
+                if (methodologyData.dimensions && Array.isArray(methodologyData.dimensions)) {
+                    mappedData = {
+                        title: methodologyData.title || 'Autoevaluación',
+                        dimensions: methodologyData.dimensions.map(dimension => ({
+                            name: dimension.name,
+                            criteria: dimension.criteria && Array.isArray(dimension.criteria)
+                                ? dimension.criteria.map(criterion => ({
+                                    description: criterion.description || '',
+                                    levels: criterion.levels && Array.isArray(criterion.levels)
+                                        ? criterion.levels.map(level => ({
+                                            name: level.name || '',
+                                            value: level.value || 0,
+                                            selected: level.selected || false
+                                        }))
+                                        : [
+                                            { name: 'Si', value: 3, selected: false },
+                                            { name: 'A veces', value: 2, selected: false },
+                                            { name: 'No', value: 1, selected: false }
+                                        ]
+                                }))
+                                : []
+                        }))
+                    };
+                }
             }
         } catch (error) {
             console.error('Error parsing evaluation methodology:', error);
         }
 
         if (!mappedData) {
-            mappedData = mappedType === EvaluationToolType.RUBRIC 
+            mappedData = mappedType === EvaluationToolType.RUBRIC
                 ? { title: 'Rúbrica de Evaluación', criteria: [] }
-                : { title: 'Lista de Cotejo', items: [] };
+                : mappedType === EvaluationToolType.CHECKLIST
+                ? { title: 'Lista de Cotejo', items: [] }
+                : mappedType === EvaluationToolType.AUTO_EVALUATION
+                ? { title: 'Autoevaluación', dimensions: [{ name: 'SER', criteria: [] }, { name: 'DECIDIR', criteria: [] }] }
+                : null;
         }
 
         return { type: mappedType, data: mappedData };
@@ -127,10 +164,14 @@ export default function EditTaskScreen() {
             evalType = EvaluationToolType.RUBRIC;
         } else if (assignment.type === 2) {
             evalType = EvaluationToolType.CHECKLIST;
+        } else if (assignment.type === 3) {
+            evalType = EvaluationToolType.AUTO_EVALUATION;
         } else if (assignment.evaluation_methodology.criteria) {
             evalType = EvaluationToolType.RUBRIC;
         } else if (assignment.evaluation_methodology.items) {
             evalType = EvaluationToolType.CHECKLIST;
+        } else if (assignment.evaluation_methodology.dimensions) {
+            evalType = EvaluationToolType.AUTO_EVALUATION;
         }
 
         if (!evalType) {
@@ -167,6 +208,29 @@ export default function EditTaskScreen() {
                     items: methodologyData.items.map(item => ({
                         description: item.description || '',
                         required: item.required !== undefined ? item.required : true
+                    }))
+                };
+            } else if (evalType === EvaluationToolType.AUTO_EVALUATION && methodologyData.dimensions) {
+                mappedData = {
+                    title: methodologyData.title || 'Autoevaluación',
+                    dimensions: methodologyData.dimensions.map(dimension => ({
+                        name: dimension.name,
+                        criteria: dimension.criteria && Array.isArray(dimension.criteria)
+                            ? dimension.criteria.map(criterion => ({
+                                description: criterion.description || '',
+                                levels: criterion.levels && Array.isArray(criterion.levels)
+                                    ? criterion.levels.map(level => ({
+                                        name: level.name || '',
+                                        value: level.value || 0,
+                                        selected: level.selected || false
+                                    }))
+                                    : [
+                                        { name: 'Si', value: 3, selected: false },
+                                        { name: 'A veces', value: 2, selected: false },
+                                        { name: 'No', value: 1, selected: false }
+                                    ]
+                            }))
+                            : []
                     }))
                 };
             }
@@ -239,6 +303,9 @@ export default function EditTaskScreen() {
                     } else if (mappedEvaluation.type === EvaluationToolType.CHECKLIST) {
                         setChecklistData(mappedEvaluation.data);
                         console.log('Datos de checklist cargados:', mappedEvaluation.data);
+                    } else if (mappedEvaluation.type === EvaluationToolType.AUTO_EVALUATION) {
+                        setAutoEvaluationData(mappedEvaluation.data);
+                        console.log('Datos de autoevaluación cargados:', mappedEvaluation.data);
                     }
                 } else {
                     console.log('❌ No hay metodología de evaluación para cargar');
@@ -293,6 +360,14 @@ export default function EditTaskScreen() {
                                 console.log('🧹 Limpiando datos de checklist');
                                 setChecklistData(null);
                             }
+                            if (tool !== EvaluationToolType.AUTO_EVALUATION) {
+                                console.log('🧹 Limpiando datos de autoevaluación');
+                                setAutoEvaluationData(null);
+                            }
+                            if (tool !== EvaluationToolType.AUTO_EVALUATION) {
+                                console.log('🧹 Limpiando datos de autoevaluación');
+                                setAutoEvaluationData(null);
+                            }
                         }
                     }
                 ]
@@ -322,6 +397,11 @@ export default function EditTaskScreen() {
         setChecklistData(checklist);
     };
 
+    const handleAutoEvaluationChange = (autoEvaluation) => {
+        console.log('🤔 Cambio en autoevaluación:', autoEvaluation);
+        setAutoEvaluationData(autoEvaluation);
+    };
+
     
 
     const handleUpdateTask = async () => {
@@ -334,7 +414,8 @@ export default function EditTaskScreen() {
             selectedValue,
             selectedEvaluationTool,
             rubricData,
-            checklistData
+            checklistData,
+            autoEvaluationData
         });
 
         if (!name || !selectedDate || !ponderacion || !descripcion) {
@@ -370,6 +451,18 @@ export default function EditTaskScreen() {
             console.log('✅ Validación de lista de cotejo pasó');
         }
 
+        if (selectedEvaluationTool === EvaluationToolType.AUTO_EVALUATION && autoEvaluationData) {
+            console.log('🤔 Validando autoevaluación...');
+            const autoEvaluationValidation = validateAutoEvaluationData(autoEvaluationData);
+            console.log('Resultado validación autoevaluación:', autoEvaluationValidation);
+            if (!autoEvaluationValidation) {
+                console.log('❌ Validación de autoevaluación falló');
+                Alert.alert("Error en Autoevaluación", "La autoevaluación debe tener título y al menos un criterio con niveles en alguna dimensión.");
+                return;
+            }
+            console.log('✅ Validación de autoevaluación pasó');
+        }
+
         try {
             console.log('🔄 Preparando datos para envío...');
             
@@ -395,14 +488,19 @@ export default function EditTaskScreen() {
 
             if (selectedEvaluationTool === EvaluationToolType.RUBRIC && rubricData) {
                 console.log('📝 Configurando rúbrica...');
-                evaluationMethodology = rubricData;
+                evaluationMethodology = JSON.stringify(rubricData);
                 evaluationToolType = 1; // Cambiar a número para el backend
                 console.log('Metodología configurada (rúbrica):', evaluationMethodology);
             } else if (selectedEvaluationTool === EvaluationToolType.CHECKLIST && checklistData) {
                 console.log('📋 Configurando lista de cotejo...');
-                evaluationMethodology = checklistData;
+                evaluationMethodology = JSON.stringify(checklistData);
                 evaluationToolType = 2; // Cambiar a número para el backend
                 console.log('Metodología configurada (checklist):', evaluationMethodology);
+            } else if (selectedEvaluationTool === EvaluationToolType.AUTO_EVALUATION && autoEvaluationData) {
+                console.log('🤔 Configurando autoevaluación...');
+                evaluationMethodology = JSON.stringify(autoEvaluationData);
+                evaluationToolType = 3; // Cambiar a número para el backend
+                console.log('Metodología configurada (autoevaluación):', evaluationMethodology);
             } else {
                 console.log('❌ Sin herramienta de evaluación o datos faltantes');
                 evaluationToolType = 0; // Sin herramienta
@@ -570,6 +668,15 @@ export default function EditTaskScreen() {
                 <ChecklistBuilder
                   initialData={checklistData}
                   onChange={handleChecklistChange}
+                />
+              </ThemedView>
+            )}
+
+            {selectedEvaluationTool === EvaluationToolType.AUTO_EVALUATION && (
+              <ThemedView style={styles.builderContainer}>
+                <AutoEvaluationBuilder
+                  initialData={autoEvaluationData}
+                  onChange={handleAutoEvaluationChange}
                 />
               </ThemedView>
             )}

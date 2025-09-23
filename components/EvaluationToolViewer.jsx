@@ -104,10 +104,16 @@ export default function EvaluationToolViewer({
     };
 
     setLocalMethodology(updatedMethodology);
-    onEvaluationChange(updatedMethodology);
+    
+    // Asegurarse de pasar el tipo junto con la metodología actualizada
+    if (onEvaluationChange) {
+      onEvaluationChange(updatedMethodology);
+    }
 
     const totalScore = calculateTotalScore(updatedMethodology);
-    onScoreChange(totalScore);
+    if (onScoreChange) {
+      onScoreChange(totalScore);
+    }
   };
 
   const handleChecklistItemToggle = (itemIndex) => {
@@ -124,10 +130,16 @@ export default function EvaluationToolViewer({
     };
 
     setLocalMethodology(updatedMethodology);
-    onEvaluationChange(updatedMethodology);
+    
+    // Asegurarse de pasar el tipo junto con la metodología actualizada
+    if (onEvaluationChange) {
+      onEvaluationChange(updatedMethodology);
+    }
 
     const totalScore = calculateTotalScore(updatedMethodology);
-    onScoreChange(totalScore);
+    if (onScoreChange) {
+      onScoreChange(totalScore);
+    }
   };
 
   if (!localMethodology || !localMethodology.methodology) {

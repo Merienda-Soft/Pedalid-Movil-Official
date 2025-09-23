@@ -119,18 +119,25 @@ export const deleteActivity = async (idActivity, deletedBy) => {
   return await response.json();
 }
 
-export const submitTaskFiles = async (taskId, studentId, files, updatedBy) => {
+export const submitTaskFiles = async (taskId, studentId, files, updatedBy, evaluationMethodology = null) => {
+  const body = {
+    taskId,
+    studentId,
+    files,
+    updated_by: updatedBy
+  };
+
+  // Si se proporciona evaluationMethodology, es una autoevaluación
+  if (evaluationMethodology) {
+    body.evaluation_methodology = evaluationMethodology;
+  }
+
   const response = await fetch(`${API_BASE_URL}/tasks/submit`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      taskId,
-      studentId,
-      files,
-      updated_by: updatedBy
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

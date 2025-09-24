@@ -582,34 +582,27 @@ export default function TaskDetailScreen() {
       </View>
 
       {/* Sección de metodología de evaluación (si existe) */}
-      {((assignment?.evaluation_methodology && assignment?.type) || (isAutoEvaluation && autoEvaluationData)) && (
+      {!isAutoEvaluation && assignment?.evaluation_methodology && assignment?.type && (
         <View style={[styles.card, { backgroundColor: theme.card }]}>
           <ThemedText style={styles.sectionTitle}>
-            Criterios de Evaluación {isAutoEvaluation ? '(Autoevaluación)' : ''}
+            Criterios de Evaluación
           </ThemedText>
-          {isAutoEvaluation ? (
-            <AutoEvaluationViewer
-              methodology={autoEvaluationData}
-              disabled={true} // Siempre deshabilitado en vista de estudiante
-            />
-          ) : (
-            <EvaluationToolViewer
-              methodology={{
-                type: assignment?.type,
-                methodology: assignment?.status === 2
-                  ? (typeof assignment.evaluation_methodology === 'string'
+          <EvaluationToolViewer
+            methodology={{
+              type: assignment?.type,
+              methodology: assignment?.status === 2
+                ? (typeof assignment.evaluation_methodology === 'string'
+                    ? JSON.parse(assignment.evaluation_methodology)
+                    : assignment.evaluation_methodology)
+                : cleanMethodologyForUnevaluated(
+                    typeof assignment.evaluation_methodology === 'string'
                       ? JSON.parse(assignment.evaluation_methodology)
-                      : assignment.evaluation_methodology)
-                  : cleanMethodologyForUnevaluated(
-                      typeof assignment.evaluation_methodology === 'string'
-                        ? JSON.parse(assignment.evaluation_methodology)
-                        : assignment.evaluation_methodology,
-                      assignment.type
-                    )
-              }}
-              isEditable={false} // Solo lectura para estudiantes
-            />
-          )}
+                      : assignment.evaluation_methodology,
+                    assignment.type
+                  )
+            }}
+            isEditable={false} // Solo lectura para estudiantes
+          />
         </View>
       )}
 

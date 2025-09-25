@@ -41,7 +41,13 @@ const AutoEvaluationViewer = ({
   useEffect(() => {
     if (methodology) {
       setAutoEvaluationState(methodology);
-      setExpandedDimensions(methodology.dimensions.map(() => false));
+
+      setExpandedDimensions(prev => {
+        if (!prev || prev.length !== (methodology.dimensions?.length || 0)) {
+          return (methodology.dimensions || []).map(() => false);
+        }
+        return prev;
+      });
     }
   }, [methodology]);
 

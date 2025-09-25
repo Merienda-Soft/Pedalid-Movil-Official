@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "./apiConfig";
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
@@ -44,74 +44,36 @@ export const getReportsByCurso = async (professorId, cursoId, managementId, quar
         throw new Error(`No se encontró el reporte para el trimestre ${quarter}`);
       }
 
-      // Descargar el archivo
-      const downloadResponse = await fetch(quarterReport.url);
-      const blob = await downloadResponse.blob();
-      const reader = new FileReader();
+      // Descargar el archivo usando expo-file-system
+      const filepath = `${FileSystem.documentDirectory}${quarterReport.fileName}`;
+      const downloadResult = await FileSystem.downloadAsync(quarterReport.url, filepath);
 
-      return new Promise((resolve, reject) => {
-        reader.onload = async () => {
-          try {
-            const base64data = reader.result.split(',')[1];
-            const filepath = `${FileSystem.documentDirectory}${quarterReport.fileName}`;
+      if (Platform.OS === 'android') {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          dialogTitle: 'Descargar Reporte',
+        });
+      } else {
+        await Sharing.shareAsync(downloadResult.uri);
+      }
 
-            await FileSystem.writeAsStringAsync(filepath, base64data, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-
-            if (Platform.OS === 'android') {
-              await Sharing.shareAsync(filepath, {
-                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                dialogTitle: 'Descargar Reporte',
-              });
-            } else {
-              await Sharing.shareAsync(filepath);
-            }
-
-            resolve({ ok: true });
-          } catch (error) {
-            reject(error);
-          }
-        };
-        reader.onerror = () => reject(new Error('Error al procesar el archivo'));
-        reader.readAsDataURL(blob);
-      });
+      return { ok: true };
     }
 
     // Si son todos los trimestres
     for (const report of reports) {
       if (report.url) {
-        const downloadResponse = await fetch(report.url);
-        const blob = await downloadResponse.blob();
-        const reader = new FileReader();
+        const filepath = `${FileSystem.documentDirectory}${report.fileName}`;
+        const downloadResult = await FileSystem.downloadAsync(report.url, filepath);
 
-        await new Promise((resolve, reject) => {
-          reader.onload = async () => {
-            try {
-              const base64data = reader.result.split(',')[1];
-              const filepath = `${FileSystem.documentDirectory}${report.fileName}`;
-
-              await FileSystem.writeAsStringAsync(filepath, base64data, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-
-              if (Platform.OS === 'android') {
-                await Sharing.shareAsync(filepath, {
-                  mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                  dialogTitle: 'Descargar Reporte',
-                });
-              } else {
-                await Sharing.shareAsync(filepath);
-              }
-
-              resolve();
-            } catch (error) {
-              reject(error);
-            }
-          };
-          reader.onerror = () => reject(new Error('Error al procesar el archivo'));
-          reader.readAsDataURL(blob);
-        });
+        if (Platform.OS === 'android') {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            dialogTitle: 'Descargar Reporte',
+          });
+        } else {
+          await Sharing.shareAsync(downloadResult.uri);
+        }
       }
     }
 
